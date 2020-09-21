@@ -153,11 +153,19 @@ pub fn list(
 
     let mut table = Table::new();
     table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
-    for (name, size) in files {
+    for (name, size, is_folder) in files {
         if human {
-            table.add_row(row![name, bytesize::ByteSize(size)]);
+            if is_folder {
+                table.add_row(row![name, "folder"]);
+            } else {
+                table.add_row(row![name, bytesize::ByteSize(size)]);
+            }
         } else if verbose {
-            table.add_row(row![name, size]);
+            if is_folder {
+                table.add_row(row![name, "folder"]);
+            } else {
+                table.add_row(row![name, size]);
+            }
         } else {
             table.add_row(row![name]);
         }

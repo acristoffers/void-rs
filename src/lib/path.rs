@@ -111,6 +111,11 @@ impl Path {
             return None;
         }
 
+        let removed = self.path.replacen(&remove, "", 1);
+        if !removed.starts_with("/") && !removed.is_empty() {
+            return None;
+        }
+
         let new_path = self.path.replacen(&remove, &new_root, 1);
 
         Path::new(new_path)
@@ -133,6 +138,13 @@ impl Path {
 
     pub fn is_dir(&self) -> bool {
         path::Path::new(&self.path).is_dir()
+    }
+
+    pub fn components(&self) -> Vec<String> {
+        path::Path::new(&self.path)
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into())
+            .collect()
     }
 }
 
@@ -219,6 +231,10 @@ mod tests {
         assert_eq!(new_path.name, "path");
         assert_eq!(new_path.path, "/a/longer/path");
         assert_eq!(new_path.parent, "/a/longer");
+
+        let path = Path::new("/some/longer/path").unwrap();
+        let new_path = path.with_root("/som", "/a");
+        assert!(new_path.is_none());
     }
 
     #[test]

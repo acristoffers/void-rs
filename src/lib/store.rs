@@ -25,6 +25,7 @@
 use super::crypto;
 use super::path::Path;
 use flexbuffers::{FlexbufferSerializer, Reader};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -560,7 +561,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn list<S: Into<String>>(&self, path: S) -> Result<Vec<(String, u64)>, Error> {
+    pub fn list<S: Into<String>>(&self, path: S) -> Result<Vec<(String, u64, bool)>, Error> {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
@@ -570,11 +571,26 @@ impl Store {
             .filter_map(|f| {
                 let file_path = Path::new(&f.path)?.join(&f.name)?;
                 if file_path.contains(&path) {
-                    Some((file_path.path, f.size))
+                    let name: String = if file_path.path == path.path {
+                        file_path.name
+                    } else {
+                        file_path
+                            .with_root(&path.path, &"/".into())?
+                            .components()
+                            .get(1)?
+                            .into()
+                    };
+
+                    if name == f.name {
+                        Some((name, f.size, false))
+                    } else {
+                        Some((name, 0, true))
+                    }
                 } else {
                     None
                 }
             })
+            .unique_by(|e| e.0.clone())
             .collect();
 
         Ok(files)
