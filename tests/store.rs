@@ -26,160 +26,138 @@ use std::fs;
 use std::path::Path;
 use void::{Error, Store};
 
+fn gen_file(path: &str, size: usize) {
+    let big_chunk: Vec<u8> = (0..size).map(|_| rand::random::<u8>()).collect();
+    if let Err(err) = fs::write(path, big_chunk) {
+        panic!("Error creating big file: {:?}", err);
+    }
+}
+
+fn dir_ls_count(dir: &str) -> usize {
+    fs::read_dir(dir)
+        .unwrap()
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, std::io::Error>>()
+        .unwrap()
+        .len()
+}
+
+fn compare_files(file1: &str, file2: &str) {
+    let c1 = fs::read(file1).unwrap();
+    let c2 = fs::read(file2).unwrap();
+    assert_eq!(c1, c2);
+}
+
 #[test]
-fn test_create() -> Result<(), Error> {
-    if Path::new("test_create").exists() {
-        fs::remove_dir_all("test_create").unwrap();
+fn test_store() -> Result<(), Error> {
+    if Path::new("tmp").exists() {
+        fs::remove_dir_all("tmp").unwrap();
     }
 
-    Store::create("test_create", "1234")?;
+    println!("Prepares files used during tests");
+    fs::create_dir_all("tmp/folder").unwrap();
+    gen_file("tmp/folder/file1", 512);
+    gen_file("tmp/folder/file2", 512);
+    gen_file("tmp/folder/file3", 512);
+    gen_file("tmp/folder/file4", 512);
+    gen_file("tmp/folder/file5", 512);
+    gen_file("tmp/file", 512);
+    gen_file("tmp/big", 157286912);
 
-    assert!(Path::new("test_create/Store.void").exists());
+    println!("Tests store creation");
+    Store::create("tmp/store", "1234")?;
 
-    match Store::create("test_create", "1234") {
+    println!("Journal file needs to exist");
+    assert!(Path::new("tmp/store/Store.void").exists());
+
+    println!("It is not possible to create a store where there is one");
+    match Store::create("tmp/store", "1234") {
         Ok(_) => panic!("Store created when it should not have been possible."),
         Err(Error::FileAlreadyExistsError) => (),
         Err(err) => panic!("Wrong error!: {:?}", err),
     }
 
-    fs::remove_dir_all("test_create").unwrap();
-
-    Ok(())
-}
-
-#[test]
-fn test_open() -> Result<(), Error> {
-    Store::create("test_open", "1234")?;
-    Store::open("test_open", "1234")?;
-
-    fs::remove_dir_all("test_open").unwrap();
-
-    match Store::open("test_open_not", "1234") {
+    println!("Tests opening non-existing store");
+    match Store::open("tmp/no-store", "1234") {
         Ok(_) => panic!("Should not have opened."),
         Err(Error::FolderDoesNotExistError) => (),
         Err(err) => panic!("Wrong error: {:?}", err),
     }
 
-    Ok(())
-}
+    println!("Tests opening store");
+    let mut store = Store::open("tmp/store", "1234")?;
 
-#[test]
-fn test_add_file() -> Result<(), Error> {
-    if Path::new("test_add").exists() {
-        fs::remove_dir_all("test_add").unwrap();
-    }
+    println!("Tests adding a file to the store");
+    store.add("tmp/file", "/")?;
+    store.add("tmp/file", "/ren")?;
+    assert_eq!(3, dir_ls_count("tmp/store"));
+    let list = store.list("/file")?;
+    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "file");
+    let list = store.list("/ren")?;
+    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "ren");
 
-    let mut store = Store::create("test_add", "1234")?;
-    store.add("Cargo.toml", "/")?;
-    store.add("Cargo.toml", "/src/cargo")?;
-    store.add("Cargo.toml", "/src")?;
-    store.add("Cargo.toml", "/somewhere/")?;
+    println!("Tests retrivieving");
+    let list = store.list("/file")?;
+    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "file");
 
-    match store.add("Cargo.toml", "/src") {
-        Ok(_) => panic!("Should not have inserted"),
-        Err(Error::StoreFileAlreadyExistsError) => {}
-        Err(err) => panic!("Wrong error: {:?}", err),
-    }
+    let list = store.list("/")?;
+    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "file");
+    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.1, 512);
 
-    fs::remove_dir_all("test_add").unwrap();
+    store.get("/file", "tmp/got")?;
+    compare_files("tmp/file", "tmp/got");
 
-    Ok(())
-}
+    println!("Tests removing file from store");
+    store.remove("/file")?;
+    assert_eq!(2, dir_ls_count("tmp/store"));
+    store.remove("/ren")?;
+    assert_eq!(1, dir_ls_count("tmp/store"));
 
-#[test]
-fn test_add_folder() -> Result<(), Error> {
-    if Path::new("test_add_folder").exists() {
-        fs::remove_dir_all("test_add_folder").unwrap();
-    }
+    println!("Tests adding folder to slash terminated path");
+    store.add("tmp/folder", "/subdir/")?;
+    assert_eq!(6, dir_ls_count("tmp/store"));
+    assert_eq!(1, store.list("/")?.len());
+    assert_eq!(1, store.list("/subdir")?.len());
+    assert_eq!(5, store.list("/subdir/folder")?.len());
 
-    let mut store = Store::create("test_add_folder", "1234")?;
-    store.add("src", "/")?;
+    println!("Tests removing folder");
+    store.remove("/subdir")?;
+    assert_eq!(1, dir_ls_count("tmp/store"));
+    assert_eq!(0, store.list("/")?.len());
 
-    fs::remove_dir_all("test_add_folder").unwrap();
+    println!("Tests adding folder renaming");
+    store.add("tmp/folder", "/subdir")?;
+    assert_eq!(6, dir_ls_count("tmp/store"));
+    assert_eq!(1, store.list("/")?.len());
+    assert_eq!(5, store.list("/subdir")?.len());
 
-    Ok(())
-}
+    println!("Tests adding file to existing folder");
+    store.add("tmp/file", "/subdir")?;
+    assert_eq!(7, dir_ls_count("tmp/store"));
+    assert_eq!(1, store.list("/")?.len());
+    assert_eq!(6, store.list("/subdir")?.len());
+    assert_eq!(1, store.list("/subdir/file")?.len());
 
-// #[test]
-// fn test_add_big_file() -> Result<(), Error> {
-//     if Path::new("test_add_big").exists() {
-//         fs::remove_dir_all("test_add_big").unwrap();
-//     }
+    println!("Tests decrypting folder");
+    store.get("/subdir", "tmp/subdir")?;
+    compare_files("tmp/folder/file1", "tmp/subdir/file1");
+    compare_files("tmp/folder/file2", "tmp/subdir/file2");
+    compare_files("tmp/folder/file3", "tmp/subdir/file3");
+    compare_files("tmp/folder/file4", "tmp/subdir/file4");
+    compare_files("tmp/folder/file5", "tmp/subdir/file5");
 
-//     if Path::new("test_big_file").exists() {
-//         fs::remove_file("test_big_file").unwrap();
-//     }
+    store.remove("/")?;
+    assert_eq!(1, dir_ls_count("tmp/store"));
 
-//     let mut store = Store::create("test_add_big", "1234")?;
+    println!("Tests adding big file");
+    store.add("tmp/big", "/")?;
+    assert_eq!(5, dir_ls_count("tmp/store"));
+    store.get("/big", "tmp/big2")?;
+    compare_files("tmp/big", "tmp/big2");
+    store.remove("/")?;
+    assert_eq!(1, dir_ls_count("tmp/store"));
 
-//     let big_chunk: Vec<u8> = (0..157286912).map(|_| rand::random::<u8>()).collect();
-//     match fs::write("test_big_file", big_chunk) {
-//         Ok(_) => (),
-//         Err(err) => panic!("Error creating big file: {:?}", err),
-//     }
-
-//     store.add("test_big_file", "/")?;
-
-//     let files = fs::read_dir("test_add_big")
-//         .unwrap()
-//         .map(|res| res.map(|e| e.path()))
-//         .collect::<Result<Vec<_>, std::io::Error>>()
-//         .unwrap();
-//     assert_eq!(5, files.len());
-
-//     fs::remove_file("test_big_file").unwrap();
-//     fs::remove_dir_all("test_add_big").unwrap();
-
-//     Ok(())
-// }
-
-#[test]
-fn test_get_file() -> Result<(), Error> {
-    if Path::new("test_get_file").exists() {
-        fs::remove_file("test_get_file").unwrap();
-    }
-
-    if Path::new("test_get_dir").exists() {
-        fs::remove_file("test_get_dir").unwrap();
-    }
-
-    if Path::new("test_get_file.toml").exists() {
-        fs::remove_file("test_get_file.toml").unwrap();
-    }
-
-    let mut store = Store::create("test_get_file", "1234")?;
-    store.add("Cargo.toml", "/dir/")?;
-    store.add("src/gui/main.rs", "/dir")?;
-    store.add("src/lib/crypto.rs", "/dir")?;
-
-    store.get("/dir/Cargo.toml", "test_get_file.toml")?;
-    store.get("/dir", "test_get_dir")?;
-
-    fs::remove_dir_all("test_get_file").unwrap();
-    fs::remove_dir_all("test_get_dir").unwrap();
-    fs::remove_file("test_get_file.toml").unwrap();
-
-    Ok(())
-}
-
-#[test]
-fn test_remove_file() -> Result<(), Error> {
-    if Path::new("test_remove_file").exists() {
-        fs::remove_dir_all("test_remove_file").unwrap();
-    }
-
-    let mut store = Store::create("test_remove_file", "1234")?;
-    store.add("Cargo.toml", "/dir/")?;
-    store.remove("/dir/Cargo.toml")?;
-
-    let files = fs::read_dir("test_remove_file")
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, std::io::Error>>()
-        .unwrap();
-    assert_eq!(1, files.len());
-
-    fs::remove_dir_all("test_remove_file").unwrap();
+    fs::remove_dir_all("tmp").unwrap();
 
     Ok(())
 }
