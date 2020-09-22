@@ -270,6 +270,14 @@ impl Store {
         Ok(store)
     }
 
+    /// Encrypts a file and adds it to the store.
+    /// The arguments work like the `cp` unix command when it comes to trailling
+    /// slashes.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - File path in the disk.
+    /// * `store_path` - Path in store where to save.
     pub fn add<S: Into<String>>(&mut self, file_path: S, store_path: S) -> Result<(), Error> {
         let file_path: String = file_path.into();
         let store_path: String = store_path.into();
@@ -453,6 +461,12 @@ impl Store {
         Ok(())
     }
 
+    /// Decrypts a file from the store and saves it on disk.
+    ///
+    /// # Arguments
+    ///
+    /// * `store_path` - Path of folder/file in the store.
+    /// * `file_path` - Path in the disk where to save.
     pub fn get<S: Into<String>>(&self, store_path: S, file_path: S) -> Result<(), Error> {
         let store_path = Path::new(store_path).ok_or(Error::CannotParseError)?;
         let file_path = Path::new(file_path).ok_or(Error::CannotParseError)?;
@@ -509,6 +523,11 @@ impl Store {
         Ok(())
     }
 
+    /// Removes a file or folder from the store.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path of folder/file in the store.
     pub fn remove<S: Into<String>>(&mut self, path: S) -> Result<(), Error> {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
@@ -561,6 +580,11 @@ impl Store {
         Ok(())
     }
 
+    /// Lists files in the store.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path of folder/file in the store.
     pub fn list<S: Into<String>>(&self, path: S) -> Result<Vec<(String, u64, bool)>, Error> {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;

@@ -49,6 +49,11 @@ pub struct Path {
 }
 
 impl Path {
+    /// Creates a new `Path` structure containing the path `path`.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to represent.
     pub fn new<S: Into<String>>(path: S) -> Option<Self> {
         let regex = regex::Regex::new("[/]+").ok()?;
         let path: String = path.into();
@@ -91,6 +96,15 @@ impl Path {
         Some(Path { name, path, parent })
     }
 
+    /// Changes the root of the path.
+    /// If this path is "/folder/file" and you call with_root with
+    /// remove="/folder" and new_root="/dir", you get a new `Path` containing
+    /// "/dir/file"
+    ///
+    /// # Arguments
+    ///
+    /// * `remove` - Portion of this path to replace.
+    /// * `new_root` - What to replace with
     pub fn with_root<S: Into<String>>(&self, remove: S, new_root: S) -> Option<Self> {
         let remove: String = remove.into();
         let new_root: String = new_root.into();
@@ -121,6 +135,13 @@ impl Path {
         Path::new(new_path)
     }
 
+    /// Returns a new path that joins this path with node.
+    /// If this path is "/folder" and you pass node="file", the returned path
+    /// will be "/folder/file".
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - Node to append to this path.
     pub fn join<S: Into<String>>(&self, node: S) -> Option<Self> {
         let node: String = node.into();
         let path = path::Path::new(&self.path).join(node);
@@ -128,18 +149,28 @@ impl Path {
         Path::new(path)
     }
 
+    /// Returns whether this file/folder exists.
+    /// Only makes sense to call on filesystem paths.
     pub fn exists(&self) -> bool {
         path::Path::new(&self.path).exists()
     }
 
+    /// Returns whether this path contains the other path.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - Path to check if this contains other.
     pub fn contains(&self, other: &Self) -> bool {
         self.path.starts_with(&other.path)
     }
 
+    /// Returns true if the path is a directory.
+    /// Only works for filesystem paths.
     pub fn is_dir(&self) -> bool {
         path::Path::new(&self.path).is_dir()
     }
 
+    /// Returns the components of the path
     pub fn components(&self) -> Vec<String> {
         path::Path::new(&self.path)
             .components()
