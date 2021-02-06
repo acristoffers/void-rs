@@ -22,7 +22,8 @@
  * SOFTWARE.
  */
 
-use prettytable::{cell, row, Table};
+use prettytable::{cell, row, Cell, Row, Table};
+use std::cmp::Ordering;
 use void::{Error::*, Store};
 
 fn open_store(path: String, password: String) -> Option<Store> {
@@ -136,11 +137,11 @@ pub fn list(
     path: String,
     password: String,
     human: bool,
-    verbose: bool,
+    list: bool,
 ) -> Option<()> {
     let store = open_store(store_path, password)?;
 
-    let files = store
+    let mut files = store
         .list(path)
         .map_err(|error| {
             let msg = match &error {
@@ -151,25 +152,57 @@ pub fn list(
         })
         .ok()?;
 
+    files.sort_unstable_by(|a, b| {
+        if a.2 && !b.2 {
+            Ordering::Less
+        } else if !a.2 && b.2 {
+            Ordering::Greater
+        } else {
+            a.0.cmp(&b.0)
+        }
+    });
+
+    let files: Vec<(String, String)> = files
+        .iter()
+        .map(|file| {
+            let name: String = if file.2 {
+                file.0.clone() + "/"
+            } else {
+                file.0.clone()
+            };
+            let size: String = if human {
+                bytesize::ByteSize(file.1).to_string()
+            } else {
+                file.1.to_string()
+            };
+
+            (name, size)
+        })
+        .collect();
+
+    if files.is_empty() {
+        return Some(());
+    }
+
     let mut table = Table::new();
     table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
-    for (name, size, is_folder) in files {
-        if human {
-            if is_folder {
-                table.add_row(row![name, "folder"]);
-            } else {
-                table.add_row(row![name, bytesize::ByteSize(size)]);
-            }
-        } else if verbose {
-            if is_folder {
-                table.add_row(row![name, "folder"]);
-            } else {
-                table.add_row(row![name, size]);
-            }
-        } else {
-            table.add_row(row![name]);
+
+    if human || list {
+        for (name, size) in files {
+            table.add_row(row![name, size]);
+        }
+    } else {
+        let cells: Vec<Cell> = files.iter().map(|file| cell![file.0]).collect();
+        let max_width = files.iter().map(|file| file.0.len()).max()?;
+        let term_width = term_size::dimensions()?.0;
+        let cells_per_row: usize = term_width / max_width;
+
+        for cells in cells.chunks(cells_per_row) {
+            let row = Row::new(cells.to_vec());
+            table.add_row(row);
         }
     }
+
     table.printstd();
 
     Some(())

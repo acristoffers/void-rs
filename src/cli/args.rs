@@ -67,8 +67,8 @@ pub enum Commands {
 
     #[structopt(about = "List files in the store")]
     LS {
-        #[structopt(short = "v", help = "Prints sizes")]
-        verbose: bool,
+        #[structopt(short = "l", help = "Prints sizes")]
+        list: bool,
 
         #[structopt(short = "h", help = "Prints human-readable sizes")]
         human: bool,
@@ -81,8 +81,18 @@ pub enum Commands {
     },
 }
 
+static LONG_ABOUT: &str = "
+Void is an encrypted file store.
+
+Its goal is to provide a filesystem-like way of storing encrypted files.
+You can add (encrypt), get(unencrypt) and manage (list, search, remove, copy \
+and move) files and folders.
+It mimics bash's semantics in mv/cp/get/add when it comes to trailling slashes.
+It also allows to set/get store-only metadata, which can be used with search.
+";
+
 #[derive(Debug, StructOpt)]
-#[structopt(name = "Void", about = "Encrypted file store.")]
+#[structopt(name = "Void", about = "Encrypted file store.", long_about=LONG_ABOUT)]
 pub struct Arguments {
     #[structopt(subcommand)]
     pub command: Commands,

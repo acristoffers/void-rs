@@ -66,10 +66,10 @@ fn main() {
             human,
             store_path,
             path,
-            verbose,
+            list,
         } => {
             let pswd = read_password(options.password);
-            if let None = store::list(store_path, path, pswd, human, verbose) {
+            if let None = store::list(store_path, path, pswd, human, list) {
                 std::process::exit(1);
             }
         }
