@@ -24,6 +24,7 @@
 
 use prettytable::{cell, row, Cell, Row, Table};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use void::{Error::*, Store};
 
 fn open_store(path: String, password: String) -> Option<Store> {
@@ -204,6 +205,118 @@ pub fn list(
     }
 
     table.printstd();
+
+    Some(())
+}
+
+pub fn metadata_set(
+    store_path: String,
+    path: String,
+    password: String,
+    key: String,
+    value: String,
+) -> Option<()> {
+    let mut store = open_store(store_path, password)?;
+
+    store
+        .metadata_set(path, key, value)
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
+
+    Some(())
+}
+
+pub fn metadata_get(store_path: String, path: String, password: String, key: String) -> Option<()> {
+    let store = open_store(store_path, password)?;
+
+    let value = store
+        .metadata_get(path, key.clone())
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
+
+    println!("{}: {}", key, value);
+
+    Some(())
+}
+
+pub fn metadata_list(store_path: String, path: String, password: String) -> Option<()> {
+    let store = open_store(store_path, password)?;
+
+    let map: HashMap<String, String> = store
+        .metadata_list(path)
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
+
+    let mut table = Table::new();
+    table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+
+    let mut list: Vec<(&String, &String)> = map.iter().collect();
+    list.sort_by_key(|(key, _)| key.clone());
+    for (key, value) in list {
+        table.add_row(row![key, value]);
+    }
+
+    table.printstd();
+
+    Some(())
+}
+
+pub fn metadata_remove(
+    store_path: String,
+    path: String,
+    password: String,
+    key: String,
+) -> Option<()> {
+    let mut store = open_store(store_path, password)?;
+
+    store
+        .metadata_remove(path, key)
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
 
     Some(())
 }

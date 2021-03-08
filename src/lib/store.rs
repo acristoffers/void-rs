@@ -25,7 +25,6 @@
 use super::crypto;
 use super::path::Path;
 use flexbuffers::{FlexbufferSerializer, Reader};
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -47,6 +46,7 @@ pub enum Error {
     FileDoesNotExistError,
     FolderDoesNotExistError,
     StoreFileAlreadyExistsError,
+    InternalStructureError,
 }
 
 impl Display for Error {
@@ -58,15 +58,22 @@ impl Display for Error {
 impl std::error::Error for Error {}
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-struct File {
+struct INode {
+    id: u64,
+    parent: u64,
     name: String,
-    path: String,
     size: u64,
+    is_file: bool,
+    metadata: HashMap<String, String>,
+    data: Vec<u64>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+struct Data {
+    id: u64,
     key: [u8; 32],
     iv: [u8; 16],
     salt: [u8; 16],
-    metadata: HashMap<String, String>,
-    parts: Vec<String>,
 }
 
 trait FlexBufferSerializable {
@@ -76,8 +83,10 @@ trait FlexBufferSerializable {
 
 #[derive(Serialize, Deserialize)]
 struct StoreFile {
-    contents: Vec<u8>,
-    hash: [u8; 32],
+    inodes: Vec<u8>,
+    inodes_hash: [u8; 32],
+    data: Vec<u8>,
+    data_hash: [u8; 32],
     iv: [u8; 16],
     salt: [u8; 16],
 }
@@ -104,7 +113,29 @@ impl FlexBufferSerializable for StoreFile {
     }
 }
 
-impl FlexBufferSerializable for Vec<File> {
+impl FlexBufferSerializable for Vec<INode> {
+    fn fb_serialize(&self) -> Result<Vec<u8>, Error> {
+        let mut bytes = FlexbufferSerializer::new();
+        match self.serialize(&mut bytes) {
+            Ok(_) => Ok(bytes.view().into()),
+            Err(_) => Err(Error::CannotSerializeError),
+        }
+    }
+
+    fn fb_deserialize(bytes: &[u8]) -> Result<Box<Self>, Error> {
+        let reader = match Reader::get_root(bytes) {
+            Ok(reader) => reader,
+            Err(_) => return Err(Error::CannotDeserializeError),
+        };
+
+        match Vec::deserialize(reader) {
+            Ok(vector) => Ok(Box::new(vector)),
+            Err(_) => return Err(Error::CannotDeserializeError),
+        }
+    }
+}
+
+impl FlexBufferSerializable for Vec<Data> {
     fn fb_serialize(&self) -> Result<Vec<u8>, Error> {
         let mut bytes = FlexbufferSerializer::new();
         match self.serialize(&mut bytes) {
@@ -128,7 +159,8 @@ impl FlexBufferSerializable for Vec<File> {
 
 #[derive(Debug)]
 pub struct Store {
-    files: Box<Vec<File>>,
+    inodes: Box<Vec<INode>>,
+    data: Box<Vec<Data>>,
     iv: [u8; 16],
     key: [u8; 32],
     path: String,
@@ -142,7 +174,7 @@ impl Store {
     ///
     /// * `path` - Path of the store.
     /// * `password` - Password that encrypts the store.
-    fn save(&self) -> Result<(), Error> {
+    fn save(&mut self) -> Result<(), Error> {
         let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
         let store_journal = store_folder
             .join("Store.void")
@@ -152,22 +184,36 @@ impl Store {
             return Err(Error::FileDoesNotExistError);
         }
 
-        let file_bytes = match self.files.fb_serialize() {
+        self.inodes.sort_by_key(|inode| inode.id);
+        self.data.sort_by_key(|data| data.id);
+
+        let inodes_bytes = match self.inodes.fb_serialize() {
+            Ok(bytes) => bytes,
+            Err(err) => return Err(err),
+        };
+
+        let data_bytes = match self.data.fb_serialize() {
             Ok(bytes) => bytes,
             Err(err) => return Err(err),
         };
 
         let key = &self.key;
         let iv = &self.iv;
-        let contents = crypto::encrypt(file_bytes.as_slice(), key, iv);
-        let contents_hash = crypto::hash(contents.as_slice(), &self.salt);
-        let mut hash = [0u8; 32];
+        let inodes = crypto::encrypt(inodes_bytes.as_slice(), key, iv);
+        let inodes_hash_vec = crypto::hash(inodes.as_slice(), &self.salt);
+        let data = crypto::encrypt(data_bytes.as_slice(), key, iv);
+        let data_hash_vec = crypto::hash(data.as_slice(), &self.salt);
+        let mut inodes_hash = [0u8; 32];
+        let mut data_hash = [0u8; 32];
 
-        hash.copy_from_slice(&contents_hash);
+        inodes_hash.copy_from_slice(&inodes_hash_vec);
+        data_hash.copy_from_slice(&data_hash_vec);
 
         let store_file = StoreFile {
-            contents,
-            hash,
+            inodes,
+            inodes_hash,
+            data,
+            data_hash,
             iv: self.iv,
             salt: self.salt,
         };
@@ -214,8 +260,19 @@ impl Store {
         let iv = crypto::uuid();
         let key = crypto::derive_key(&password, &salt, &iv);
 
-        let store = Store {
-            files: Box::new(vec![]),
+        let root = INode {
+            id: 0,
+            parent: 0,
+            name: String::new(),
+            size: 0,
+            is_file: false,
+            metadata: HashMap::new(),
+            data: vec![],
+        };
+
+        let mut store = Store {
+            inodes: Box::new(vec![root]),
+            data: Box::new(vec![]),
             iv,
             key,
             path: store_folder.path,
@@ -253,18 +310,24 @@ impl Store {
         let iv = store_file.iv;
         let key = crypto::derive_key(password.as_str(), &salt, &iv);
 
-        let contents = store_file.contents.as_slice();
-        let contents =
-            crypto::decrypt(contents, &key, &iv).map_err(|_| Error::CannotDecryptFileError)?;
+        let inodes = store_file.inodes.as_slice();
+        let inodes = crypto::decrypt(inodes, &key, &iv);
+        let inodes = inodes.map_err(|_| Error::CannotDecryptFileError)?;
 
-        let files = Vec::fb_deserialize(contents.as_slice())?;
+        let data = store_file.data.as_slice();
+        let data = crypto::decrypt(data, &key, &iv);
+        let data = data.map_err(|_| Error::CannotDecryptFileError)?;
+
+        let inodes = Vec::fb_deserialize(inodes.as_slice())?;
+        let data = Vec::fb_deserialize(data.as_slice())?;
 
         let store = Store {
-            files,
-            iv: store_file.iv,
+            inodes,
+            data,
+            iv,
             key,
             path: store_folder.path,
-            salt: store_file.salt,
+            salt,
         };
 
         Ok(store)
@@ -283,14 +346,12 @@ impl Store {
         let store_path: String = store_path.into();
 
         let ends_in_slash = store_path.ends_with("/");
-
+        let file_path = Path::new(file_path).ok_or(Error::CannotParseError)?;
         let store_path = Path::new(&store_path).ok_or(Error::CannotParseError)?;
-
         let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
         let store_journal = store_folder
             .join("Store.void")
             .ok_or(Error::CannotParseError)?;
-        let file_path = Path::new(file_path).ok_or(Error::CannotParseError)?;
 
         if !store_folder.exists() {
             return Err(Error::FolderDoesNotExistError);
@@ -326,13 +387,8 @@ impl Store {
                 self.add(entry_path.path, store_path.path)?;
             }
         } else {
-            let mut file_handle =
-                fs::File::open(&file_path.path).map_err(|_| Error::CannotReadFileError)?;
-
-            let salt = crypto::uuid();
-            let iv = crypto::uuid();
-            let pswd = hex::encode(crypto::uuid());
-            let key = crypto::derive_key(&pswd, &salt, &iv);
+            let file_handle = fs::File::open(&file_path.path);
+            let mut file_handle = file_handle.map_err(|_| Error::CannotReadFileError)?;
 
             let file_std_path = std::path::Path::new(&file_path.path);
             let mut metadata: HashMap<String, String> = HashMap::new();
@@ -350,43 +406,38 @@ impl Store {
                 // verify if /folder/folder does not contain file in path.
 
                 // File already exists?
-                if self
-                    .files
-                    .iter()
-                    .any(|f| f.name == file_name && f.path == store_path.path)
-                {
+                let path = store_path.join(&file_name).ok_or(Error::CannotParseError)?;
+                if self.inode_with_path(path.path).is_ok() {
                     return Err(Error::StoreFileAlreadyExistsError);
                 }
 
                 // Path contains a file?
                 // like /folder/file.txt/folder/file.jpg
-                if self
-                    .files
-                    .iter()
-                    .map(|f| Path::new(&f.path)?.join(&f.name))
-                    .filter_map(|p| p)
-                    .any(|p| store_path.contains(&p))
-                {
-                    return Err(Error::StoreFileAlreadyExistsError);
+                let mut path = Path::new("/").ok_or(Error::CannotParseError)?;
+                for component in store_path.components() {
+                    if let Some(inode) = self.inode_with_path(&path.path).ok() {
+                        if inode.is_file {
+                            return Err(Error::StoreFileAlreadyExistsError);
+                        }
+
+                        path = path.join(component).ok_or(Error::CannotParseError)?;
+                    } else {
+                        break;
+                    }
                 }
 
                 (store_path, file_name)
             } else {
                 // is /folder/folder a folder?
-                if self
-                    .files
-                    .iter()
-                    .map(|f| Path::new(&f.path))
-                    .filter_map(|p| p)
-                    .any(|p| p.contains(&store_path))
-                {
-                    // File already exists?
-                    if self
-                        .files
-                        .iter()
-                        .any(|f| f.name == file_name && f.path == store_path.path)
-                    {
+                if let Some(node) = self.inode_with_path(&store_path.path).ok() {
+                    if node.is_file {
                         return Err(Error::StoreFileAlreadyExistsError);
+                    } else {
+                        // File already exists?
+                        let path = store_path.join(&file_name).ok_or(Error::CannotParseError)?;
+                        if let Some(_) = self.inode_with_path(path.path).ok() {
+                            return Err(Error::StoreFileAlreadyExistsError);
+                        }
                     }
 
                     (store_path, file_name)
@@ -398,15 +449,15 @@ impl Store {
                 }
             };
 
-            let mut file = File {
+            self.inode_mkdirp(&store_path.path)?;
+            let mut inode = INode {
+                id: self.inodes.iter().map(|node| node.id).max().unwrap_or(0) + 1,
+                parent: self.inode_with_path(&store_path.path)?.id,
                 name: file_name.into(),
-                path: store_path.path,
                 size: file_size,
-                key,
-                iv,
-                salt,
+                is_file: true,
                 metadata,
-                parts: vec![],
+                data: vec![],
             };
 
             let mut bytes = vec![0u8; 52428800];
@@ -414,9 +465,12 @@ impl Store {
                 let bytes_read = match file_handle.read(bytes.as_mut_slice()) {
                     Ok(size) => size,
                     Err(_) => {
-                        for part in file.parts {
-                            let part_file =
-                                store_folder.join(part).ok_or(Error::CannotParseError)?;
+                        for part in inode.data {
+                            let part_name = hex::encode(part.to_string());
+                            let part_name = format!("{:0>32}", part_name);
+                            let part_file = store_folder
+                                .join(part_name)
+                                .ok_or(Error::CannotParseError)?;
                             fs::remove_file(part_file.path).unwrap_or(());
                         }
                         return Err(Error::CannotReadFileError);
@@ -427,32 +481,72 @@ impl Store {
                     break;
                 }
 
+                let salt = crypto::uuid();
+                let iv = crypto::uuid();
+                let pswd = hex::encode(crypto::uuid());
+                let key = crypto::derive_key(&pswd, &salt, &iv);
+
+                let data = Data {
+                    id: self
+                        .data
+                        .iter()
+                        .map(|data| data.id)
+                        .max()
+                        .unwrap_or_else(|| 0)
+                        + 1,
+                    key,
+                    iv,
+                    salt,
+                };
+
                 let bytes_read = &bytes[..bytes_read];
-                let file_path = file.path.clone() + "/" + file.name.as_str();
-                let file_path = file_path.as_bytes();
-                let part_hash = crypto::hash2(bytes_read, file_path, &file.salt);
-                let part_hash = hex::encode(part_hash);
-                let content = crypto::encrypt(bytes_read, &file.key, &file.iv);
+                let content = crypto::encrypt(bytes_read, &key, &iv);
+                let part_name = hex::encode(data.id.to_string());
+                let part_name = format!("{:0>32}", part_name);
                 let part_file = store_folder
-                    .join(&part_hash)
+                    .join(part_name)
                     .ok_or(Error::CannotParseError)?;
 
                 if let Err(_) = fs::write(part_file.path, content) {
-                    for part in file.parts {
-                        let part_file = store_folder.join(part).ok_or(Error::CannotParseError)?;
+                    for part in inode.data {
+                        let part_name = hex::encode(part.to_string());
+                        let part_name = format!("{:0>32}", part_name);
+                        let part_file = store_folder
+                            .join(part_name)
+                            .ok_or(Error::CannotParseError)?;
                         fs::remove_file(part_file.path).unwrap_or(());
+                        let data = self
+                            .data
+                            .iter()
+                            .filter(|data| data.id != part)
+                            .map(|data| data.clone())
+                            .collect();
+                        self.data = Box::new(data);
                     }
                     return Err(Error::CannotWriteFileError);
                 };
 
-                file.parts.push(part_hash);
+                self.data.push(data.clone());
+                inode.data.push(data.id);
             }
 
-            self.files.push(file.clone());
+            self.inodes.push(inode.clone());
+            self.inode_add_child(inode.parent, inode.id)?;
             if let Err(err) = self.save() {
-                for part in file.parts {
-                    let part_file = store_folder.join(part).ok_or(Error::CannotParseError)?;
+                for part in inode.data {
+                    let part_name = hex::encode(part.to_string());
+                    let part_name = format!("{:0>32}", part_name);
+                    let part_file = store_folder
+                        .join(part_name)
+                        .ok_or(Error::CannotParseError)?;
                     fs::remove_file(part_file.path).unwrap_or(());
+                    let data = self
+                        .data
+                        .iter()
+                        .filter(|data| data.id != part)
+                        .map(|data| data.clone())
+                        .collect();
+                    self.data = Box::new(data);
                 }
                 return Err(err);
             }
@@ -475,23 +569,18 @@ impl Store {
             return Err(Error::FileAlreadyExistsError);
         }
 
-        let files: Vec<&File> = self
-            .files
-            .iter()
-            .filter_map(|f| {
-                let file_path = Path::new(&f.path)?.join(&f.name)?;
-                if file_path.contains(&store_path) {
-                    Some(f)
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let inode = self.inode_with_path(&store_path.path)?.clone();
+        let files: Vec<INode> = if !inode.is_file {
+            self.inode_walk(inode)
+                .into_iter()
+                .filter(|node| node.is_file)
+                .collect()
+        } else {
+            vec![inode]
+        };
 
         for file in &files {
-            let disk_path = Path::new(&file.path)
-                .ok_or(Error::CannotParseError)?
-                .join(&file.name)
+            let disk_path = Path::new(self.path_for_inode(file.clone()))
                 .ok_or(Error::CannotParseError)?
                 .with_root(&store_path.path, &file_path.path)
                 .ok_or(Error::CannotParseError)?;
@@ -504,15 +593,18 @@ impl Store {
                     .map_err(|_| Error::CannotCreateDirectoryError)?;
             }
 
-            let mut file_handle =
-                fs::File::create(&disk_path.path).map_err(|_| Error::CannotWriteFileError)?;
+            let file_handle = fs::File::create(&disk_path.path);
+            let mut file_handle = file_handle.map_err(|_| Error::CannotWriteFileError)?;
 
             let store_path = Path::new(&self.path).ok_or(Error::CannotParseError)?;
-            for part in &file.parts {
-                let part_path = store_path.join(part).ok_or(Error::CannotParseError)?;
+            for part_id in &file.data {
+                let part_name = hex::encode(part_id.to_string());
+                let part_name = format!("{:0>32}", part_name);
+                let part_path = store_path.join(part_name).ok_or(Error::CannotParseError)?;
                 let cipher = fs::read(part_path.path).map_err(|_| Error::CannotReadFileError)?;
-                let content = crypto::decrypt(cipher.as_slice(), &file.key, &file.iv)
-                    .map_err(|_| Error::CannotDecryptFileError)?;
+                let data = self.data_with_id(*part_id)?;
+                let content = crypto::decrypt(cipher.as_slice(), &data.key, &data.iv);
+                let content = content.map_err(|_| Error::CannotDecryptFileError)?;
 
                 file_handle
                     .write_all(content.as_slice())
@@ -529,53 +621,33 @@ impl Store {
     ///
     /// * `path` - Path of folder/file in the store.
     pub fn remove<S: Into<String>>(&mut self, path: S) -> Result<(), Error> {
-        let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+        let inode = self.inode_with_path(path.path)?.clone();
+        let inodes = self.inode_walk(inode.clone());
+        let store_path = Path::new(&self.path).ok_or(Error::CannotParseError)?;
+        let mut data = inode.data.clone();
 
-        let files: Vec<String> = self
-            .files
-            .iter()
-            .filter_map(|f| {
-                let file_path = Path::new(&f.path)?.join(&f.name)?;
-                if file_path.contains(&path) {
-                    Some(f)
-                } else {
-                    None
-                }
-            })
-            .flat_map(|f| f.parts.clone())
-            .collect();
+        self.inode_remove_child(inode.parent, inode.id)?;
 
-        let mut cannot_remove: Vec<String> = vec![];
-        for file in files {
-            // It should not panic. Store has been tested and is valid and file
-            // is just a filename.
-            let file_path = Path::new(&self.path).unwrap().join(&file).unwrap();
-
-            if let Err(_) = fs::remove_file(file_path.path) {
-                cannot_remove.push(file.clone());
-            }
+        if inode.id != 0 {
+            self.inodes.retain(|node| node.id != inode.id);
         }
 
-        let files: Vec<File> = self
-            .files
-            .iter()
-            .filter_map(|f| {
-                let file_path = Path::new(&f.path)?.join(&f.name)?;
-                if !file_path.contains(&path) {
-                    Some(f.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
+        for inode in inodes {
+            data.extend(inode.data.clone());
+            self.inodes.retain(|node| node.id != inode.id);
+        }
 
-        self.files = Box::new(files);
+        for id in data {
+            let part_name = hex::encode(id.to_string());
+            let part_name = format!("{:0>32}", part_name);
+            let part_path = store_path.join(part_name).ok_or(Error::CannotParseError)?;
+
+            self.data.retain(|data| data.id != id);
+            fs::remove_file(part_path.path).ok();
+        }
+
         self.save()?;
-
-        if !cannot_remove.is_empty() {
-            return Err(Error::CannotRemoveFilesError(cannot_remove));
-        }
 
         Ok(())
     }
@@ -586,37 +658,217 @@ impl Store {
     ///
     /// * `path` - Path of folder/file in the store.
     pub fn list<S: Into<String>>(&self, path: S) -> Result<Vec<(String, u64, bool)>, Error> {
-        let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+        let inode = self.inode_with_path(path.path)?;
 
-        let files = self
-            .files
-            .iter()
-            .filter_map(|f| {
-                let file_path = Path::new(&f.path)?.join(&f.name)?;
-                if file_path.contains(&path) {
-                    let name: String = if file_path.path == path.path {
-                        file_path.name
-                    } else {
-                        file_path
-                            .with_root(&path.path, &"/".into())?
-                            .components()
-                            .get(1)?
-                            .into()
-                    };
-
-                    if name == f.name {
-                        Some((name, f.size, false))
-                    } else {
-                        Some((name, 0, true))
-                    }
-                } else {
-                    None
-                }
-            })
-            .unique_by(|e| e.0.clone())
-            .collect();
+        let files = if inode.is_file {
+            vec![(inode.name.clone(), inode.size, !inode.is_file)]
+        } else {
+            inode
+                .data
+                .iter()
+                .map(|&id| self.inode_with_id(id).ok())
+                .filter_map(|node| node)
+                .map(|node| (node.name.clone(), node.size, !node.is_file))
+                .collect()
+        };
 
         Ok(files)
+    }
+
+    pub fn metadata_set<S: Into<String>>(
+        &mut self,
+        path: S,
+        key: S,
+        value: S,
+    ) -> Result<(), Error> {
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+        let mut inode = self.inode_with_path(path.path)?.clone();
+        let key: String = key.into();
+        let value: String = value.into();
+
+        inode.metadata.insert(key, value);
+
+        self.inodes.retain(|node| node.id != inode.id);
+        self.inodes.push(inode);
+
+        self.save()?;
+
+        Ok(())
+    }
+
+    pub fn metadata_remove<S: Into<String>>(&mut self, path: S, key: S) -> Result<(), Error> {
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+        let mut inode = self.inode_with_path(path.path)?.clone();
+        let key: String = key.into();
+
+        inode.metadata.remove(&key);
+
+        self.inodes.retain(|node| node.id != inode.id);
+        self.inodes.push(inode);
+
+        self.save()?;
+
+        Ok(())
+    }
+
+    pub fn metadata_get<S: Into<String>>(&self, path: S, key: S) -> Result<&String, Error> {
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+        let inode = self.inode_with_path(path.path)?;
+        let key: String = key.into();
+
+        inode
+            .metadata
+            .get(&key)
+            .ok_or(Error::InternalStructureError)
+    }
+
+    pub fn metadata_list<S: Into<String>>(
+        &self,
+        path: S,
+    ) -> Result<HashMap<String, String>, Error> {
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+        let inode = self.inode_with_path(path.path)?;
+
+        Ok(inode.metadata.clone())
+    }
+
+    fn inode_with_id(&self, id: u64) -> Result<&INode, Error> {
+        let inode = self.inodes.iter().find(|inode| inode.id == id);
+        inode.ok_or(Error::InternalStructureError)
+    }
+
+    fn data_with_id(&self, id: u64) -> Result<&Data, Error> {
+        let data = self.data.iter().find(|data| data.id == id);
+        data.ok_or(Error::InternalStructureError)
+    }
+
+    fn inode_with_path<S: Into<String>>(&self, path: S) -> Result<&INode, Error> {
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+
+        let mut node = self.inode_with_id(0)?;
+        if path.path == "/" {
+            return Ok(node);
+        }
+
+        for component in path.components() {
+            if component == "/" {
+                // Since path is normalized, it skips only the root component.
+                continue;
+            } else if let Some(next_node) = node
+                .data
+                .iter()
+                .map(|&id| self.inode_with_id(id).ok())
+                .filter_map(|r| r)
+                .find(|node| node.name == component)
+            {
+                node = next_node
+            } else {
+                return Err(Error::InternalStructureError);
+            }
+        }
+
+        if node.name == path.name {
+            Ok(node)
+        } else {
+            Err(Error::InternalStructureError)
+        }
+    }
+
+    fn path_for_inode(&self, inode: INode) -> String {
+        let mut inode = inode;
+        let mut components = vec![];
+        while inode.id != 0 {
+            components.insert(0, inode.name);
+            inode = self.inode_with_id(inode.parent).unwrap().clone();
+        }
+        components.insert(0, "".into());
+        components.join("/")
+    }
+
+    fn inode_walk(&self, inode: INode) -> Vec<INode> {
+        let mut inodes = vec![];
+
+        if !inode.is_file {
+            for id in inode.data {
+                let child = self.inode_with_id(id).unwrap();
+                inodes.push(child.clone());
+                if !child.is_file {
+                    let mut children = self.inode_walk(child.clone());
+                    inodes.append(&mut children);
+                }
+            }
+        }
+
+        inodes
+    }
+
+    fn inode_mkdirp<S: Into<String>>(&mut self, path: S) -> Result<(), Error> {
+        let path = Path::new(path.into()).ok_or(Error::CannotParseError)?;
+
+        let mut node = self.inode_with_id(0)?.clone();
+        for component in path.components() {
+            if component == "/" {
+                continue;
+            }
+
+            if let Some(child) = node
+                .data
+                .iter()
+                .map(|&id| self.inode_with_id(id).ok())
+                .filter_map(|node| node)
+                .find(|node| node.name == component)
+            {
+                node = child.clone();
+            } else {
+                let inode = INode {
+                    id: self.inodes.iter().map(|node| node.id).max().unwrap_or(0) + 1,
+                    parent: node.id,
+                    name: component,
+                    size: 0,
+                    is_file: false,
+                    metadata: HashMap::new(),
+                    data: vec![],
+                };
+                self.inodes.push(inode.clone());
+                node = self.inode_with_id(inode.id)?.clone();
+                self.inode_add_child(node.parent, node.id)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn inode_add_child(&mut self, parent_id: u64, child_id: u64) -> Result<(), Error> {
+        let mut parent = self.inode_with_id(parent_id)?.clone();
+        let child = self.inode_with_id(child_id)?.clone();
+
+        if parent.is_file {
+            return Err(Error::InternalStructureError);
+        }
+
+        parent.data.push(child.id);
+        parent.data.sort();
+        parent.data.dedup();
+
+        self.inodes.retain(|node| node.id != parent.id);
+        self.inodes.push(parent);
+
+        Ok(())
+    }
+
+    fn inode_remove_child(&mut self, parent_id: u64, child_id: u64) -> Result<(), Error> {
+        let mut parent = self.inode_with_id(parent_id)?.clone();
+        let child = self.inode_with_id(child_id)?.clone();
+
+        if parent.is_file {
+            return Err(Error::InternalStructureError);
+        }
+
+        parent.data.retain(|&id| id != child.id);
+        self.inodes.retain(|node| node.id != parent.id);
+        self.inodes.push(parent);
+
+        Ok(())
     }
 }

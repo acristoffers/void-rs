@@ -59,32 +59,6 @@ pub(crate) fn hash(data: &[u8], salt: &[u8; 16]) -> [u8; 32] {
     hash
 }
 
-/// Returns a [u8; 32] array with the value of the hash.
-/// It uses Blake2B as hasher.
-///
-/// # Arguments
-///
-/// * `d1` and `d2` - Byte arrays that holds the data to be hashed.
-/// * `salt` - A byte array that holds the salt. [u0; 16].
-///
-/// # Example
-///
-/// ```ignore
-/// let name = "Álan Crístoffer";
-/// let salt = uuid();
-/// let hash = hash(name.as_bytes(), &salt);
-/// ```
-pub(crate) fn hash2(d1: &[u8], d2: &[u8], salt: &[u8; 16]) -> [u8; 32] {
-    let mut hash = [0u8; 32];
-    let mut hasher = VarBlake2b::new(32).unwrap();
-    hasher.update(d1);
-    hasher.update(d2);
-    hasher.update(b"$");
-    hasher.update(salt);
-    hasher.finalize_variable(|res| hash.copy_from_slice(&res));
-    hash
-}
-
 /// Returns a [u8; 16] array with the value of the UUID.
 /// It uses UUIDv4.
 ///

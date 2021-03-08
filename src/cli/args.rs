@@ -79,6 +79,54 @@ pub enum Commands {
         #[structopt(help = "Path to list")]
         path: String,
     },
+
+    #[structopt(about = "Set file metadata")]
+    MetadataSet {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to set metadata")]
+        path: String,
+
+        #[structopt(help = "Metadata key")]
+        key: String,
+
+        #[structopt(help = "Metadata value")]
+        value: String,
+    },
+
+    #[structopt(about = "Get file metadata")]
+    MetadataGet {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to get metadata")]
+        path: String,
+
+        #[structopt(help = "Metadata key")]
+        key: String,
+    },
+
+    #[structopt(about = "List file metadata")]
+    MetadataList {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to list metadata")]
+        path: String,
+    },
+
+    #[structopt(about = "Remove file metadata")]
+    MetadataRemove {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to get metadata")]
+        path: String,
+
+        #[structopt(help = "Metadata key")]
+        key: String,
+    },
 }
 
 static LONG_ABOUT: &str = "

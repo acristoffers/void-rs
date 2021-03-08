@@ -155,15 +155,6 @@ impl Path {
         path::Path::new(&self.path).exists()
     }
 
-    /// Returns whether this path contains the other path.
-    ///
-    /// # Arguments
-    ///
-    /// * `other` - Path to check if this contains other.
-    pub fn contains(&self, other: &Self) -> bool {
-        self.path.starts_with(&other.path)
-    }
-
     /// Returns true if the path is a directory.
     /// Only works for filesystem paths.
     pub fn is_dir(&self) -> bool {
@@ -275,13 +266,5 @@ mod tests {
         assert_eq!(new_path.name, "b");
         assert_eq!(new_path.path, "/a/b");
         assert_eq!(new_path.parent, "/a");
-    }
-
-    #[test]
-    fn test_contains_path() {
-        let path1 = Path::new("/a/b/c").unwrap();
-        let path2 = Path::new("/a").unwrap();
-        let contains = path1.contains(&path2);
-        assert_eq!(contains, true);
     }
 }

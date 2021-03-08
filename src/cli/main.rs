@@ -80,6 +80,47 @@ fn main() {
                 std::process::exit(1);
             }
         }
+
+        Commands::MetadataSet {
+            store_path,
+            path,
+            key,
+            value,
+        } => {
+            let pswd = read_password(options.password);
+            if let None = store::metadata_set(store_path, path, pswd, key, value) {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::MetadataGet {
+            store_path,
+            path,
+            key,
+        } => {
+            let pswd = read_password(options.password);
+            if let None = store::metadata_get(store_path, path, pswd, key) {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::MetadataList { store_path, path } => {
+            let pswd = read_password(options.password);
+            if let None = store::metadata_list(store_path, path, pswd) {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::MetadataRemove {
+            store_path,
+            path,
+            key,
+        } => {
+            let pswd = read_password(options.password);
+            if let None = store::metadata_remove(store_path, path, pswd, key) {
+                std::process::exit(1);
+            }
+        }
     }
 }
 
