@@ -54,9 +54,9 @@ impl Path {
     /// # Arguments
     ///
     /// * `path` - Path to represent.
-    pub fn new<S: Into<String>>(path: S) -> Option<Self> {
+    pub fn new<'a, S: Into<&'a String>>(path: S) -> Option<Self> {
         let regex = regex::Regex::new("[/]+").ok()?;
-        let path: String = path.into();
+        let path: &String = path.into();
         let path = regex.replace_all(&path, "/");
         let fs_path = path::Path::new(path.as_ref());
 
@@ -132,7 +132,7 @@ impl Path {
 
         let new_path = self.path.replacen(&remove, &new_root, 1);
 
-        Path::new(new_path)
+        Path::new(&new_path)
     }
 
     /// Returns a new path that joins this path with node.
@@ -146,7 +146,7 @@ impl Path {
         let node: String = node.into();
         let path = path::Path::new(&self.path).join(node);
         let path = path.abs()?;
-        Path::new(path)
+        Path::new(&path)
     }
 
     /// Returns whether this file/folder exists.
@@ -186,37 +186,37 @@ mod tests {
         let cwd = std::env::current_dir().unwrap();
         let cwd = cwd.as_path();
 
-        let path = Path::new("/path").unwrap();
+        let path = Path::new(&"/path".into()).unwrap();
         assert_eq!(path.name, "path");
         assert_eq!(path.path, "/path");
         assert_eq!(path.parent, "/");
 
-        let path = Path::new("/path/").unwrap();
+        let path = Path::new(&"/path/".into()).unwrap();
         assert_eq!(path.name, "path");
         assert_eq!(path.path, "/path");
         assert_eq!(path.parent, "/");
-        let path = Path::new("/").unwrap();
+        let path = Path::new(&"/".into()).unwrap();
 
         assert_eq!(path.name, "");
         assert_eq!(path.path, "/");
         assert_eq!(path.parent, "/");
 
-        let path = Path::new("/path/to/file").unwrap();
+        let path = Path::new(&"/path/to/file".into()).unwrap();
         assert_eq!(path.name, "file");
         assert_eq!(path.path, "/path/to/file");
         assert_eq!(path.parent, "/path/to");
 
-        let path = Path::new("/path/./to//nope/../file").unwrap();
+        let path = Path::new(&"/path/./to//nope/../file".into()).unwrap();
         assert_eq!(path.name, "file");
         assert_eq!(path.path, "/path/to/file");
         assert_eq!(path.parent, "/path/to");
 
-        let path = Path::new("./path/to/file").unwrap();
+        let path = Path::new(&"./path/to/file".into()).unwrap();
         assert_eq!(path.name, "file");
         assert_eq!(path::Path::new(&path.path), cwd.join("path/to/file"));
         assert_eq!(path::Path::new(&path.parent), cwd.join("path/to"));
 
-        let path = Path::new("path/to/file").unwrap();
+        let path = Path::new(&"path/to/file".into()).unwrap();
         assert_eq!(path.name, "file");
         assert_eq!(path::Path::new(&path.path), cwd.join("path/to/file"));
         assert_eq!(path::Path::new(&path.parent), cwd.join("path/to"));
@@ -224,44 +224,44 @@ mod tests {
 
     #[test]
     fn test_change_root() {
-        let path = Path::new("/some/path").unwrap();
+        let path = Path::new(&"/some/path".into()).unwrap();
         let new_path = path.with_root("/some", "/").unwrap();
         assert_eq!(new_path.name, "path");
         assert_eq!(new_path.path, "/path");
         assert_eq!(new_path.parent, "/");
 
-        let path = Path::new("/some/path").unwrap();
+        let path = Path::new(&"/some/path".into()).unwrap();
         let new_path = path.with_root("/some/", "/").unwrap();
         assert_eq!(new_path.name, "path");
         assert_eq!(new_path.path, "/path");
         assert_eq!(new_path.parent, "/");
 
-        let path = Path::new("/some/longer/path").unwrap();
+        let path = Path::new(&"/some/longer/path".into()).unwrap();
         let new_path = path.with_root("/some", "/a").unwrap();
         assert_eq!(new_path.name, "path");
         assert_eq!(new_path.path, "/a/longer/path");
         assert_eq!(new_path.parent, "/a/longer");
 
-        let path = Path::new("/some///////////longer/path").unwrap();
+        let path = Path::new(&"/some///////////longer/path".into()).unwrap();
         let new_path = path.with_root("/some", "/a/").unwrap();
         assert_eq!(new_path.name, "path");
         assert_eq!(new_path.path, "/a/longer/path");
         assert_eq!(new_path.parent, "/a/longer");
 
-        let path = Path::new("/some/longer/path").unwrap();
+        let path = Path::new(&"/some/longer/path".into()).unwrap();
         let new_path = path.with_root("/some/", "/a/").unwrap();
         assert_eq!(new_path.name, "path");
         assert_eq!(new_path.path, "/a/longer/path");
         assert_eq!(new_path.parent, "/a/longer");
 
-        let path = Path::new("/some/longer/path").unwrap();
+        let path = Path::new(&"/some/longer/path".into()).unwrap();
         let new_path = path.with_root("/som", "/a");
         assert!(new_path.is_none());
     }
 
     #[test]
     fn test_join_path() {
-        let path = Path::new("/a").unwrap();
+        let path = Path::new(&"/a".into()).unwrap();
         let new_path = path.join("b").unwrap();
         assert_eq!(new_path.name, "b");
         assert_eq!(new_path.path, "/a/b");

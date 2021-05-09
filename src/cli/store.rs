@@ -122,7 +122,7 @@ pub fn get(
 
 pub fn remove(store_path: String, path: String, password: String) -> Option<()> {
     open_store(store_path, password)?
-        .remove(path)
+        .remove(&path)
         .map_err(|error| {
             let msg = match &error {
                 err => format!("An error occurred: {:?}", err),
@@ -140,10 +140,10 @@ pub fn list(
     human: bool,
     list: bool,
 ) -> Option<()> {
-    let store = open_store(store_path, password)?;
+    let mut store = open_store(store_path, password)?;
 
     let mut files = store
-        .list(path)
+        .list(&path)
         .map_err(|error| {
             let msg = match &error {
                 err => format!("An error occurred: {:?}", err),
@@ -153,30 +153,29 @@ pub fn list(
         })
         .ok()?;
 
-    files.sort_unstable_by(|a, b| {
-        if a.2 && !b.2 {
+    files.sort_by(|a, b| {
+        if !a.is_file && b.is_file {
             Ordering::Less
-        } else if !a.2 && b.2 {
+        } else if a.is_file && !b.is_file {
             Ordering::Greater
         } else {
-            a.0.cmp(&b.0)
+            a.name.cmp(&b.name)
         }
     });
 
     let files: Vec<(String, String)> = files
         .iter()
         .map(|file| {
-            let name: String = if file.2 {
-                file.0.clone() + "/"
+            let name: String = if !file.is_file {
+                file.name.clone() + "/"
             } else {
-                file.0.clone()
+                file.name.clone()
             };
             let size: String = if human {
-                bytesize::ByteSize(file.1).to_string()
+                bytesize::ByteSize(file.size).to_string()
             } else {
-                file.1.to_string()
+                file.size.to_string()
             };
-
             (name, size)
         })
         .collect();
@@ -188,7 +187,7 @@ pub fn list(
     let mut table = Table::new();
     table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
 
-    if human || list {
+    if (human || list) && path != "*" {
         for (name, size) in files {
             table.add_row(row![name, size]);
         }
@@ -196,8 +195,11 @@ pub fn list(
         let cells: Vec<Cell> = files.iter().map(|file| cell![file.0]).collect();
         let max_width = files.iter().map(|file| file.0.len()).max()?;
         let term_width = term_size::dimensions()?.0;
-        let cells_per_row: usize = term_width / max_width;
-
+        let cells_per_row: usize = if term_width >= max_width {
+            term_width / max_width
+        } else {
+            1
+        };
         for cells in cells.chunks(cells_per_row) {
             let row = Row::new(cells.to_vec());
             table.add_row(row);
@@ -219,7 +221,7 @@ pub fn metadata_set(
     let mut store = open_store(store_path, password)?;
 
     store
-        .metadata_set(path, key, value)
+        .metadata_set(&path, &key, &value)
         .map_err(|error| {
             let msg = match &error {
                 CannotSerializeError => "Error saving: could not serialize.".into(),
@@ -238,10 +240,10 @@ pub fn metadata_set(
 }
 
 pub fn metadata_get(store_path: String, path: String, password: String, key: String) -> Option<()> {
-    let store = open_store(store_path, password)?;
+    let mut store = open_store(store_path, password)?;
 
     let value = store
-        .metadata_get(path, key.clone())
+        .metadata_get(&path, &key)
         .map_err(|error| {
             let msg = match &error {
                 CannotSerializeError => "Error saving: could not serialize.".into(),
@@ -262,10 +264,10 @@ pub fn metadata_get(store_path: String, path: String, password: String, key: Str
 }
 
 pub fn metadata_list(store_path: String, path: String, password: String) -> Option<()> {
-    let store = open_store(store_path, password)?;
+    let mut store = open_store(store_path, password)?;
 
     let map: HashMap<String, String> = store
-        .metadata_list(path)
+        .metadata_list(&path)
         .map_err(|error| {
             let msg = match &error {
                 CannotSerializeError => "Error saving: could not serialize.".into(),
@@ -303,7 +305,7 @@ pub fn metadata_remove(
     let mut store = open_store(store_path, password)?;
 
     store
-        .metadata_remove(path, key)
+        .metadata_remove(&path, &key)
         .map_err(|error| {
             let msg = match &error {
                 CannotSerializeError => "Error saving: could not serialize.".into(),
@@ -317,6 +319,139 @@ pub fn metadata_remove(
             error
         })
         .ok()?;
+
+    Some(())
+}
+
+pub fn tag_add(store_path: String, path: String, password: String, tag: String) -> Option<()> {
+    let mut store = open_store(store_path, password)?;
+
+    store
+        .tag_add(&path, &tag)
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
+
+    Some(())
+}
+
+pub fn tag_remove(store_path: String, path: String, password: String, tag: String) -> Option<()> {
+    let mut store = open_store(store_path, password)?;
+
+    store
+        .tag_rm(&path, &tag)
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
+
+    Some(())
+}
+
+pub fn tag_clear(store_path: String, path: String, password: String) -> Option<()> {
+    let mut store = open_store(store_path, password)?;
+
+    store
+        .tag_clear(&path)
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
+
+    Some(())
+}
+
+pub fn tag_list(store_path: String, password: String) -> Option<()> {
+    let store = open_store(store_path, password)?;
+
+    let mut tags = store.tag_list();
+    tags.sort();
+
+    let mut table = Table::new();
+    table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+
+    for tag in tags {
+        table.add_row(row![tag]);
+    }
+
+    table.printstd();
+
+    Some(())
+}
+
+pub fn tag_get(store_path: String, path: String, password: String) -> Option<()> {
+    let mut store = open_store(store_path, password)?;
+
+    let mut tags = store
+        .tag_get(&path)
+        .map_err(|error| {
+            let msg = match &error {
+                CannotSerializeError => "Error saving: could not serialize.".into(),
+                FileAlreadyExistsError => "Hash collision ocurred?".into(),
+                StoreFileAlreadyExistsError => {
+                    "A file with same name in same path already exists.".into()
+                }
+                err => format!("An error occurred: {:?}", err),
+            };
+            eprint!("{}", msg);
+            error
+        })
+        .ok()?;
+    tags.sort();
+
+    let mut table = Table::new();
+    table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+
+    for tag in tags {
+        table.add_row(row![tag]);
+    }
+
+    table.printstd();
+
+    Some(())
+}
+
+pub fn tag_search(store_path: String, tags: Vec<String>, password: String) -> Option<()> {
+    let store = open_store(store_path, password)?;
+
+    let files = store.tag_search(tags);
+
+    let mut table = Table::new();
+    table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+
+    for file in files {
+        table.add_row(row![file.name]);
+    }
+
+    table.printstd();
 
     Some(())
 }

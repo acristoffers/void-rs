@@ -32,13 +32,21 @@ fn main() {
     let options = Arguments::from_args();
 
     match options.command {
-        Commands::Create { store_name } => {
-            let name = store_name;
-            let pswd = read_password(options.password);
-            if let None = store::create_store(name, pswd) {
+        Commands::Create { store_name } => loop {
+            let pswd = read_password(options.password.clone());
+            let pswd_confirm = read_password(options.password.clone());
+
+            if pswd != pswd_confirm {
+                println!("Passwords do not match.");
+                continue;
+            }
+
+            if let None = store::create_store(store_name.clone(), pswd) {
                 std::process::exit(1);
             }
-        }
+
+            break;
+        },
 
         Commands::Add {
             store_path,
@@ -118,6 +126,61 @@ fn main() {
         } => {
             let pswd = read_password(options.password);
             if let None = store::metadata_remove(store_path, path, pswd, key) {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::TagAdd {
+            store_path,
+            path,
+            tags,
+        } => {
+            let pswd = read_password(options.password);
+            for tag in tags {
+                if let None = store::tag_add(store_path.clone(), path.clone(), pswd.clone(), tag) {
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::TagRemove {
+            store_path,
+            path,
+            tags,
+        } => {
+            let pswd = read_password(options.password);
+            for tag in tags {
+                if let None = store::tag_remove(store_path.clone(), path.clone(), pswd.clone(), tag)
+                {
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::TagGet { store_path, path } => {
+            let pswd = read_password(options.password);
+            if let None = store::tag_get(store_path, path, pswd) {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::TagList { store_path } => {
+            let pswd = read_password(options.password);
+            if let None = store::tag_list(store_path, pswd) {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::TagClear { store_path, path } => {
+            let pswd = read_password(options.password);
+            if let None = store::tag_clear(store_path, path, pswd) {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::TagSearch { store_path, tags } => {
+            let pswd = read_password(options.password);
+            if let None = store::tag_search(store_path, tags, pswd) {
                 std::process::exit(1);
             }
         }

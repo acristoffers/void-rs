@@ -91,18 +91,21 @@ fn test_store() -> Result<(), Error> {
     store.add("tmp/file", "/")?;
     store.add("tmp/file", "/ren")?;
     assert_eq!(3, dir_ls_count("tmp/store"));
-    let list = store.list("/file")?;
-    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "file");
-    let list = store.list("/ren")?;
-    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "ren");
+    let mut list = store.list("/file")?;
+    list.sort_by_key(|file| file.id);
+    assert_eq!(list[0].name, "file");
+    let mut list = store.list("/ren")?;
+    list.sort_by_key(|file| file.id);
+    assert_eq!(list[0].name, "ren");
 
     println!("Tests retrivieving");
     let list = store.list("/file")?;
-    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "file");
+    assert_eq!(list[0].name, "file");
 
-    let list = store.list("/")?;
-    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.0, "file");
-    assert_eq!(list.first().ok_or(Error::CannotDeserializeError)?.1, 512);
+    let mut list = store.list("/")?;
+    list.sort_by_key(|file| file.id);
+    assert_eq!(list[0].name, "file");
+    assert_eq!(list[0].size, 512);
 
     store.get("/file", "tmp/got")?;
     compare_files("tmp/file", "tmp/got");
@@ -113,8 +116,13 @@ fn test_store() -> Result<(), Error> {
     store.remove("/ren")?;
     assert_eq!(1, dir_ls_count("tmp/store"));
 
-    println!("Tests adding folder to slash terminated path");
-    store.add("tmp/folder", "/subdir/")?;
+    println!("Tests adding folder to store");
+    store.add("tmp/folder", "/")?;
+    assert_eq!(6, dir_ls_count("tmp/store"));
+    assert_eq!(1, store.list("/")?.len());
+    assert_eq!(5, store.list("/folder")?.len());
+    store.remove("/")?;
+    store.add("tmp/folder", "/subdir")?;
     assert_eq!(6, dir_ls_count("tmp/store"));
     assert_eq!(1, store.list("/")?.len());
     assert_eq!(1, store.list("/subdir")?.len());
@@ -126,7 +134,7 @@ fn test_store() -> Result<(), Error> {
     assert_eq!(0, store.list("/")?.len());
 
     println!("Tests adding folder renaming");
-    store.add("tmp/folder", "/subdir")?;
+    store.add("tmp/folder/", "/subdir")?;
     assert_eq!(6, dir_ls_count("tmp/store"));
     assert_eq!(1, store.list("/")?.len());
     assert_eq!(5, store.list("/subdir")?.len());

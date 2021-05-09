@@ -127,16 +127,73 @@ pub enum Commands {
         #[structopt(help = "Metadata key")]
         key: String,
     },
+
+    #[structopt(about = "Add node tag")]
+    TagAdd {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to add tag")]
+        path: String,
+
+        #[structopt(help = "Tag name")]
+        tags: Vec<String>,
+    },
+
+    #[structopt(about = "Remove node tag")]
+    TagRemove {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to remove tag")]
+        path: String,
+
+        #[structopt(help = "Tag name")]
+        tags: Vec<String>,
+    },
+
+    #[structopt(about = "Get node tags")]
+    TagGet {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to get tag")]
+        path: String,
+    },
+
+    #[structopt(about = "Get node tags")]
+    TagClear {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(help = "Path of file or folder to clear tags")]
+        path: String,
+    },
+
+    #[structopt(about = "List tags in the filesystem")]
+    TagList {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+    },
+
+    #[structopt(about = "List nodes with tags")]
+    TagSearch {
+        #[structopt(help = "store", short = "s", about = "Path to the store folder")]
+        store_path: String,
+
+        #[structopt(
+            help = "Tags to search for. tag1 !tag2 will match files that contains tag1 but not tag2"
+        )]
+        tags: Vec<String>,
+    },
 }
 
 static LONG_ABOUT: &str = "
 Void is an encrypted file store.
 
-Its goal is to provide a filesystem-like way of storing encrypted files.
-You can add (encrypt), get(unencrypt) and manage (list, search, remove, copy \
-and move) files and folders.
-It mimics bash's semantics in mv/cp/get/add when it comes to trailling slashes.
-It also allows to set/get store-only metadata, which can be used with search.
+Its goal is to provide a filesystem-like way of storing encrypted files. You can
+add (encrypt), get (unencrypt) and manage (list, search, remove and move) files
+and folders. It also allows to set/get store-only metadata.
 ";
 
 #[derive(Debug, StructOpt)]

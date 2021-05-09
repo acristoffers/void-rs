@@ -23,6 +23,7 @@
  */
 
 mod crypto;
+mod filesystem;
 mod path;
 mod store;
 
