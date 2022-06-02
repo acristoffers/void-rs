@@ -21,7 +21,10 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:void_gui/widgets/filepicker.dart';
 
 class LoginPage extends StatefulWidget {
@@ -34,61 +37,109 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final storeController = TextEditingController();
   final passwordController = TextEditingController();
+  final focusNode = FocusNode();
+  final focusNode2 = FocusNode();
   bool? isCreate;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 420,
-          height: 280,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  ExcludeSemantics(
-                    child: Image.asset(
-                      'assets/icon.png',
-                      width: 128,
-                      height: 128,
-                      filterQuality: FilterQuality.medium,
-                    ),
+    final node = this.isCreate != null ? focusNode2 : focusNode;
+    FocusScope.of(context).requestFocus(node);
+    return Shortcuts(
+      shortcuts: Platform.isMacOS
+          ? <SingleActivator, Intent>{
+              SingleActivator(LogicalKeyboardKey.keyO, meta: true):
+                  OpenIntent(),
+              SingleActivator(LogicalKeyboardKey.keyN, meta: true):
+                  CreateIntent(),
+              SingleActivator(LogicalKeyboardKey.escape): CancelIntent(),
+            }
+          : <SingleActivator, Intent>{
+              SingleActivator(LogicalKeyboardKey.keyO, control: true):
+                  OpenIntent(),
+              SingleActivator(LogicalKeyboardKey.keyN, control: true):
+                  CreateIntent(),
+              SingleActivator(LogicalKeyboardKey.escape): CancelIntent(),
+            },
+      child: FocusableActionDetector(
+        focusNode: this.focusNode,
+        autofocus: this.isCreate == null,
+        actions: {
+          OpenIntent: CallbackAction<OpenIntent>(onInvoke: (_) => open()),
+          CreateIntent: CallbackAction<CreateIntent>(onInvoke: (_) => create()),
+          CancelIntent: CallbackAction<CancelIntent>(onInvoke: (_) => cancel()),
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 420,
+              height: 280,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ExcludeSemantics(
+                        child: Image.asset(
+                          'assets/icon.png',
+                          width: 128,
+                          height: 128,
+                          filterQuality: FilterQuality.medium,
+                        ),
+                      ),
+                      isCreate == null
+                          ? SelectActionWidget(storeController)
+                          : PasswordWidget(
+                              passwordController,
+                              isCreate!,
+                              focusNode2,
+                            )
+                    ],
                   ),
-                  isCreate == null
-                      ? SelectActionWidget(
-                          storeController,
-                          (x) => setState(() => isCreate = x),
-                        )
-                      : PasswordWidget(
-                          passwordController,
-                          isCreate!,
-                          (x) => setState(() => isCreate = x),
-                        )
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
+  }
+
+  void create() async {
+    final path = await FilePicker.newFile();
+    if (path != null) {
+      setState(() => isCreate = true);
+    }
+  }
+
+  void open() async {
+    final path = await FilePicker.existingFolder();
+    if (path != null) {
+      setState(() => isCreate = false);
+    }
+  }
+
+  void cancel() {
+    setState(() {
+      this.isCreate = null;
+      this.passwordController.clear();
+    });
   }
 }
 
 class PasswordWidget extends StatelessWidget {
   final TextEditingController passwordController;
-  final void Function(bool?) setCreate;
   final bool isCreate;
+  final FocusNode focusNode;
 
   const PasswordWidget(
     this.passwordController,
     this.isCreate,
-    this.setCreate, {
+    this.focusNode, {
     Key? key,
   }) : super(key: key);
 
@@ -107,6 +158,7 @@ class PasswordWidget extends StatelessWidget {
               enableSuggestions: false,
               autocorrect: false,
               obscureText: true,
+              focusNode: this.focusNode,
               autofocus: true,
               decoration: InputDecoration(hintText: 'Password'),
             ),
@@ -116,39 +168,17 @@ class PasswordWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            SizedBox(
-              width: 180,
-              height: 48,
-              child: Semantics(
-                label: 'Cancel',
-                button: true,
-                focusable: true,
-                onTap: () {
-                  setCreate(null);
-                  passwordController.clear();
-                },
-                child: OutlinedButton(
-                  onPressed: () {
-                    setCreate(null);
-                    passwordController.clear();
-                  },
-                  child: Text('Cancel'),
-                ),
-              ),
+            SemanticButton(
+              label: 'Cancel',
+              text: 'Cancel',
+              action: () {
+                Actions.maybeInvoke(context, CancelIntent());
+              },
             ),
-            SizedBox(
-              width: 180,
-              height: 48,
-              child: Semantics(
-                label: isCreate ? 'Create store' : 'Open store',
-                button: true,
-                focusable: true,
-                onTap: () => isCreate ? create() : open(),
-                child: OutlinedButton(
-                  onPressed: () => isCreate ? create() : open(),
-                  child: Text(isCreate ? 'Create' : 'Open'),
-                ),
-              ),
+            SemanticButton(
+              label: isCreate ? 'Create' : 'Open',
+              text: isCreate ? 'Create store' : 'Open store',
+              action: () => isCreate ? create() : open(),
             ),
           ],
         )
@@ -163,11 +193,9 @@ class PasswordWidget extends StatelessWidget {
 
 class SelectActionWidget extends StatelessWidget {
   final TextEditingController storeController;
-  final void Function(bool) setCreate;
 
   const SelectActionWidget(
-    this.storeController,
-    this.setCreate, {
+    this.storeController, {
     Key? key,
   }) : super(key: key);
 
@@ -178,33 +206,15 @@ class SelectActionWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            SizedBox(
-              width: 180,
-              height: 48,
-              child: Semantics(
-                label: 'Create new store',
-                button: true,
-                focusable: true,
-                onTap: this.createStore,
-                child: OutlinedButton(
-                  onPressed: this.createStore,
-                  child: Text('Create'),
-                ),
-              ),
+            SemanticButton(
+              label: 'Create',
+              text: 'Create a new store',
+              action: () => invokeCreate(context),
             ),
-            SizedBox(
-              width: 180,
-              height: 48,
-              child: Semantics(
-                label: 'Open existing store',
-                button: true,
-                focusable: true,
-                onTap: this.openStore,
-                child: OutlinedButton(
-                  onPressed: this.openStore,
-                  child: Text('Open'),
-                ),
-              ),
+            SemanticButton(
+              label: 'Open',
+              text: 'Open an existing store',
+              action: () => invokeOpen(context),
             ),
           ],
         ),
@@ -212,19 +222,54 @@ class SelectActionWidget extends StatelessWidget {
     );
   }
 
-  void createStore() async {
-    final path = await FilePicker.newFile();
-    if (path != null) {
-      setCreate(true);
-      print(path);
-    }
+  void invokeCreate(BuildContext context) {
+    Actions.maybeInvoke(context, CreateIntent());
   }
 
-  void openStore() async {
-    final path = await FilePicker.existingFolder();
-    if (path != null) {
-      setCreate(false);
-      print(path);
-    }
+  void invokeOpen(BuildContext context) {
+    Actions.maybeInvoke(context, OpenIntent());
   }
+}
+
+class SemanticButton extends StatelessWidget {
+  const SemanticButton({
+    Key? key,
+    required this.label,
+    required this.text,
+    required this.action,
+  }) : super(key: key);
+
+  final String label;
+  final String text;
+  final void Function() action;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 180,
+      height: 48,
+      child: Semantics(
+        label: text,
+        button: true,
+        focusable: true,
+        onTap: action,
+        child: OutlinedButton(
+          onPressed: action,
+          child: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+class OpenIntent extends Intent {
+  const OpenIntent();
+}
+
+class CreateIntent extends Intent {
+  const CreateIntent();
+}
+
+class CancelIntent extends Intent {
+  const CancelIntent();
 }
