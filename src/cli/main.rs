@@ -26,7 +26,7 @@ mod args;
 mod store;
 
 use args::{Arguments, Commands, Parser};
-use rpassword::read_password_from_tty;
+use rpassword;
 
 fn main() {
     let options = Arguments::parse();
@@ -192,7 +192,7 @@ fn read_password(password: Option<String>) -> String {
         Some(pswd) => pswd,
         None => {
             let err = "Error reading password.";
-            read_password_from_tty(Some("Password: ")).expect(err)
+            rpassword::prompt_password("Password: ").expect(err)
         }
     }
 }

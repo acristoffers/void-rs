@@ -37,6 +37,7 @@ use std::io::{Read, Write};
 pub enum Error {
     CannotCreateDirectoryError,
     CannotCreateFileError,
+    CannotEncryptFileError,
     CannotDecryptFileError,
     CannotDeserializeError,
     CannotParseError,
@@ -147,7 +148,7 @@ impl Store {
         self.fs.sort();
         let fs_bytes = self.fs.fb_serialize()?;
 
-        let fs = crypto::encrypt(fs_bytes.as_slice(), &self.key, &self.iv);
+        let fs = crypto::encrypt(fs_bytes.as_slice(), &self.key, &self.iv)?;
         let fs_hash_vec = crypto::hash(fs.as_slice(), &self.salt);
         let mut fs_hash = [0u8; 32];
 
@@ -393,7 +394,7 @@ impl Store {
                     .ok_or(Error::InternalStructureError)?;
 
                 let bytes_read = &bytes[..bytes_read];
-                let content = crypto::encrypt(bytes_read, &key, &iv);
+                let content = crypto::encrypt(bytes_read, &key, &iv)?;
                 let part_name = hex::encode(data.id.to_be_bytes());
                 let part_name = format!("{part_name:0>32}");
                 let part_file = store_folder
