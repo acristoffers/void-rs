@@ -39,7 +39,7 @@ pub enum Commands {
     #[command()]
     Add {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path in the store where it will be saved
@@ -55,7 +55,7 @@ pub enum Commands {
     #[command()]
     Get {
         /// Path to the store folder
-        #[arg(long = "store", short = 's')]
+        #[arg(long = "store", short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path in the store where it will be saved
@@ -71,7 +71,7 @@ pub enum Commands {
     #[command()]
     RM {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to remove from store
@@ -91,7 +91,7 @@ pub enum Commands {
         human: bool,
 
         /// Path to the store folder
-        #[arg(long = "store", short = 's')]
+        #[arg(long = "store", short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path to list
@@ -103,7 +103,7 @@ pub enum Commands {
     #[command()]
     MetadataSet {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to set metadata
@@ -123,7 +123,7 @@ pub enum Commands {
     #[command()]
     MetadataGet {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to get metadata
@@ -139,7 +139,7 @@ pub enum Commands {
     #[command()]
     MetadataList {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to list metadata
@@ -151,7 +151,7 @@ pub enum Commands {
     #[command()]
     MetadataRemove {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to get metadata
@@ -167,7 +167,7 @@ pub enum Commands {
     #[command()]
     TagAdd {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to add tag
@@ -183,7 +183,7 @@ pub enum Commands {
     #[command()]
     TagRemove {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to remove tag
@@ -199,7 +199,7 @@ pub enum Commands {
     #[command()]
     TagGet {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to get tag
@@ -211,7 +211,7 @@ pub enum Commands {
     #[command()]
     TagClear {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Path of file or folder to clear tags
@@ -223,7 +223,7 @@ pub enum Commands {
     #[command()]
     TagList {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
     },
 
@@ -231,7 +231,7 @@ pub enum Commands {
     #[command()]
     TagSearch {
         /// Path to the store folder
-        #[arg(short = 's')]
+        #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,
 
         /// Tags to search for. tag1 !tag2 will match files that contains tag1 but not tag2
@@ -254,6 +254,6 @@ pub struct Arguments {
     pub command: Commands,
 
     /// Password
-    #[arg(global = true, long = "password", short = 'p')]
+    #[arg(global = true, long = "password", short = 'p', env = "VOID_PSWD")]
     pub password: Option<String>,
 }
