@@ -2,7 +2,7 @@ use clap_complete::{generate_to, shells};
 use std::env;
 use std::io::Error;
 
-include!("src/cli/args.rs");
+include!("cli/src/args.rs");
 
 fn main() -> Result<(), Error> {
     let outdir = match env::var_os("OUT_DIR") {

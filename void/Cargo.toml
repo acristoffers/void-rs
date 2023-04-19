@@ -1,0 +1,35 @@
+[package]
+name = "void"
+version = "1.0.0"
+authors = ["Álan Crístoffer <acristoffers@startmail.com>"]
+edition = "2021"
+description = "Encrypted file store."
+
+[dependencies]
+blake2 = "0.10.6"
+bytesize = "1.2.0"
+flexbuffers = "2.0.0"
+hex = "0.4.3"
+hkdf = "0.12.3"
+itertools = "0.10.5"
+path-absolutize = "3.0.14"
+rand = "0.8.5"
+regex = "1.7.3"
+serde_derive = "1.0.158"
+tree_magic = "0.2.3"
+walkdir = "2.3.3"
+aes-gcm = "0.10.1"
+sha2 = "0.10.6"
+clap = { version = "4.1.13", features = ["derive", "env"] }
+serde = { version = "1.0.158", features = ["derive"] }
+uuid = { version = "1.3.0", features = ["serde", "v4"] }
+
+[build-dependencies]
+clap = { version = "4.1.13", features = ["derive", "env"] }
+clap_complete = "4.1.5"
+clap_mangen = "0.2.10"
+
+[lib]
+name = "void"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib", "staticlib"]

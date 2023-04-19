@@ -1,0 +1,29 @@
+[package]
+name = "void-gui"
+version = "1.0.0"
+authors = ["Álan Crístoffer <acristoffers@startmail.com>"]
+edition = "2021"
+description = "Encrypted file store."
+
+[dependencies]
+void = { path = "../void" }
+iced = { version = "0.8.0", features = ["image", "svg"]}
+iced_native = { version = "0.9.1"}
+rust-embed = { version = "6.6.1"}
+rfd = { version = "0.11.3"}
+
+[[bin]]
+name = "void-gui"
+path = "src/main.rs"
+
+[package.metadata.bundle.bin.void-gui]
+name = "Void"
+identifier = "me.acristoffers.void"
+icon = ["assets/icon.svg", "assets/icon.png", "assets/icon.icns", "assets/icon.ico"]
+category = "Utility"
+copyright = "Álan Crístoffer e Sousa"
+long_description = """
+Its goal is to provide a filesystem-like way of storing encrypted files. You can
+add (encrypt), get (unencrypt) and manage (list, search, remove and move) files
+and folders. It also allows to set/get store-only metadata.
+"""

@@ -1,0 +1,14 @@
+[package]
+name = "tests"
+version = "1.0.0"
+authors = ["Álan Crístoffer <acristoffers@startmail.com>"]
+edition = "2021"
+description = "Encrypted file store."
+
+[dependencies]
+void = { path = "../void" }
+rand = "0.8.5"
+
+[[test]]
+name = "void"
+path = "store.rs"

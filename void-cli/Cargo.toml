@@ -1,0 +1,23 @@
+[package]
+name = "void-cli"
+version = "1.0.0"
+authors = ["Álan Crístoffer <acristoffers@startmail.com>"]
+edition = "2021"
+description = "Encrypted file store."
+
+[dependencies]
+void = { path = "../void" }
+clap = { version = "4.1.13", features = ["derive", "env"] }
+bytesize = "1.2.0"
+prettytable-rs = { version = "0.10.0"}
+rpassword = { version = "7.2.0"}
+term_size = { version = "0.3.2"}
+
+[build-dependencies]
+clap = { version = "4.1.13", features = ["derive", "env"] }
+clap_complete = "4.1.5"
+clap_mangen = "0.2.10"
+
+[[bin]]
+name = "void-cli"
+path = "src/main.rs"
