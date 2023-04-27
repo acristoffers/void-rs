@@ -8,9 +8,9 @@ use iced::alignment::Vertical::Center;
 use iced::theme::Button;
 use iced::theme::Container;
 use iced::widget::{button, column, container, row, scrollable, svg, text};
-use iced::{keyboard, Background, Color, Padding, Theme};
 use iced::{Alignment, Element, Length};
-use iced_native::Event;
+use iced::{Background, Color, Padding, Theme};
+use iced_native::{keyboard, Event};
 use void::Store;
 
 pub struct HomeComponent {
@@ -55,14 +55,14 @@ impl HomeComponent {
     fn banner_widget(&self, i18n: &I18N) -> Element<VoidMessage> {
         let logo_svg = Assets::get("icon.svg").unwrap();
         let logo = svg(svg::Handle::from_memory(logo_svg.data))
-            .width(Length::Units(48))
-            .height(Length::Units(48));
+            .width(Length::Fixed(48f32))
+            .height(Length::Fixed(48f32));
 
         let app_name = text(i18n.tr("Void"))
             .style(Color::WHITE)
             .size(36)
             .vertical_alignment(Center)
-            .height(Length::Units(48))
+            .height(Length::Fixed(48f32))
             .width(Length::Fill);
 
         let en_svg = svg::Handle::from_memory(Assets::get("en.svg").unwrap().data);
@@ -70,11 +70,11 @@ impl HomeComponent {
         let fr_svg = svg::Handle::from_memory(Assets::get("fr.svg").unwrap().data);
         let pt_svg = svg::Handle::from_memory(Assets::get("pt.svg").unwrap().data);
 
-        let flags_size = Length::Units(24);
+        let flags_size = Length::Fixed(24f32);
         let flag_button = |svg_handle, language| {
             button(svg(svg_handle).width(flags_size).height(flags_size))
                 .on_press(VoidMessage::LanguageChanged(language))
-                .height(Length::Units(48))
+                .height(Length::Fixed(48f32))
                 .style(Button::Text)
         };
 
@@ -105,7 +105,7 @@ impl HomeComponent {
                 .width(Length::Fill),
         )
         .style(Container::Custom(Box::new(container_style)))
-        .height(Length::Units(48 + 16))
+        .height(Length::Fixed(48f32 + 16f32))
         .width(Length::Fill)
         .into()
     }
@@ -126,7 +126,7 @@ impl HomeComponent {
             .style(Container::Custom(Box::new(sidebar_style)))
             .height(Length::Fill)
             .padding(Padding::from([8, 8, 8, 8]))
-            .width(Length::Units(300));
+            .width(Length::Fixed(300f32));
 
         container.into()
     }
@@ -151,7 +151,7 @@ impl HomeComponent {
         )
         .style(Container::Custom(Box::new(sidebar_style)))
         .height(Length::Fill)
-        .width(Length::Units(300))
+        .width(Length::Fixed(300f32))
         .into()
     }
 }

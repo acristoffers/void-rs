@@ -7,13 +7,12 @@ use crate::VoidMessage;
 use crate::VoidRoute;
 
 use iced::alignment::{Horizontal, Vertical};
-use iced::keyboard;
 use iced::theme::Button;
 use iced::theme::Theme;
 use iced::widget::text_input;
 use iced::widget::{button, column, row, svg, text};
 use iced::{Alignment, Element, Length};
-use iced_native::Event;
+use iced_native::{keyboard, Event};
 
 pub fn login_component<'a>(
     i18n: &I18N,
@@ -125,8 +124,8 @@ impl LoginComponent<'_> {
     pub fn home_view<'a>(self) -> Element<'a, VoidMessage> {
         let svg_file = Assets::get("icon.svg").unwrap();
         let logo = svg(svg::Handle::from_memory(svg_file.data))
-            .width(Length::Units(256))
-            .height(Length::Units(256));
+            .width(Length::Fixed(256f32))
+            .height(Length::Fixed(256f32));
 
         let name = text("Void").size(48);
 
@@ -138,8 +137,8 @@ impl LoginComponent<'_> {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
-        .height(Length::Units(48))
-        .width(Length::Units(192))
+        .height(Length::Fixed(48f32))
+        .width(Length::Fixed(192f32))
         .on_press(VoidMessage::PickFile(PickFileOptions {
             pick_file: true,
             pick_store: false,
@@ -161,8 +160,8 @@ impl LoginComponent<'_> {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
-        .height(Length::Units(48))
-        .width(Length::Units(192))
+        .height(Length::Fixed(48f32))
+        .width(Length::Fixed(192f32))
         .on_press(VoidMessage::PickFile(PickFileOptions {
             pick_file: true,
             pick_store: true,
@@ -186,7 +185,7 @@ impl LoginComponent<'_> {
         let fr_svg = svg::Handle::from_memory(Assets::get("fr.svg").unwrap().data);
         let pt_svg = svg::Handle::from_memory(Assets::get("pt.svg").unwrap().data);
 
-        let flags_size = Length::Units(32);
+        let flags_size = Length::Fixed(32f32);
         let flag_button = |svg_handle, language| {
             button(svg(svg_handle).width(flags_size).height(flags_size))
                 .on_press(VoidMessage::LanguageChanged(language))
@@ -211,8 +210,8 @@ impl LoginComponent<'_> {
         let theme_mode_handle = svg::Handle::from_memory(theme_mode_file.data);
         let theme_toggle = button(
             svg(theme_mode_handle)
-                .width(Length::Units(32))
-                .height(Length::Units(32)),
+                .width(Length::Fixed(32f32))
+                .height(Length::Fixed(32f32)),
         )
         .on_press(VoidMessage::ThemeChanged(
             match ThemeType::from_iced_theme(self.theme) {
@@ -233,17 +232,16 @@ impl LoginComponent<'_> {
     pub fn open_view<'a>(self) -> Element<'a, VoidMessage> {
         let svg_file = Assets::get("icon.svg").unwrap();
         let logo = svg(svg::Handle::from_memory(svg_file.data))
-            .width(Length::Units(256))
-            .height(Length::Units(256));
+            .width(Length::Fixed(256f32))
+            .height(Length::Fixed(256f32));
 
         let name = text("Void").size(48);
 
-        let password = text_input(&self.i18n.tr("password"), &self.password, |x| {
-            VoidMessage::PasswordChanged(x)
-        })
-        .password()
-        .size(24)
-        .on_submit(VoidMessage::OpenStore);
+        let password = text_input(&self.i18n.tr("password"), &self.password)
+            .on_input(VoidMessage::PasswordChanged)
+            .password()
+            .size(24)
+            .on_submit(VoidMessage::OpenStore);
 
         let cancel = button(
             text(self.i18n.tr("cancel"))
@@ -253,8 +251,8 @@ impl LoginComponent<'_> {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
-        .height(Length::Units(48))
-        .width(Length::Units(192))
+        .height(Length::Fixed(48f32))
+        .width(Length::Fixed(192f32))
         .style(Button::Destructive)
         .on_press(VoidMessage::RouteChanged(crate::VoidRoute::Login(
             LoginPage::Home,
@@ -268,8 +266,8 @@ impl LoginComponent<'_> {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
-        .height(Length::Units(48))
-        .width(Length::Units(192))
+        .height(Length::Fixed(48f32))
+        .width(Length::Fixed(192f32))
         .on_press(VoidMessage::OpenStore);
 
         let row = row![open, cancel]
@@ -288,17 +286,16 @@ impl LoginComponent<'_> {
     pub fn create_view<'a>(self) -> Element<'a, VoidMessage> {
         let svg_file = Assets::get("icon.svg").unwrap();
         let logo = svg(svg::Handle::from_memory(svg_file.data))
-            .width(Length::Units(256))
-            .height(Length::Units(256));
+            .width(Length::Fixed(256f32))
+            .height(Length::Fixed(256f32));
 
         let name = text("Void").size(48);
 
-        let password = text_input(&self.i18n.tr("password"), &self.password, |x| {
-            VoidMessage::PasswordChanged(x)
-        })
-        .password()
-        .size(24)
-        .on_submit(VoidMessage::CreateStore);
+        let password = text_input(&self.i18n.tr("password"), &self.password)
+            .on_input(VoidMessage::PasswordChanged)
+            .password()
+            .size(24)
+            .on_submit(VoidMessage::CreateStore);
 
         let cancel = button(
             text(self.i18n.tr("cancel"))
@@ -308,8 +305,8 @@ impl LoginComponent<'_> {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
-        .height(Length::Units(48))
-        .width(Length::Units(192))
+        .height(Length::Fixed(48f32))
+        .width(Length::Fixed(192f32))
         .style(Button::Destructive)
         .on_press(VoidMessage::RouteChanged(crate::VoidRoute::Login(
             LoginPage::Home,
@@ -323,8 +320,8 @@ impl LoginComponent<'_> {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
-        .height(Length::Units(48))
-        .width(Length::Units(192))
+        .height(Length::Fixed(48f32))
+        .width(Length::Fixed(192f32))
         .on_press(VoidMessage::CreateStore);
 
         let row = row![create, cancel]

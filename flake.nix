@@ -1,7 +1,7 @@
 {
   inputs = {
     nixpkgs.url = github:NixOS/nixpkgs/nixpkgs-unstable;
-    cargo2nix.url = github:cargo2nix/cargo2nix;
+    cargo2nix.url = github:acristoffers/cargo2nix;
     flake-utils.url = github:numtide/flake-utils;
     rust-overlay.url = github:oxalica/rust-overlay;
   };
@@ -15,92 +15,68 @@
             rust-overlay.overlays.default
           ];
         };
+        mkOvrd = { name, ovrds }: (pkgs.rustBuilder.rustLib.makeOverride {
+          name = name;
+          overrideAttrs = drv: {
+            propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ ovrds;
+          };
+        });
         rustPkgs = pkgs.rustBuilder.makePackageSet {
           rustToolchain = pkgs.rust-bin.stable.latest.default;
           packageFun = import ./Cargo.nix;
           packageOverrides = pkgs: pkgs.rustBuilder.overrides.all ++ [
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "pango-sys";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.pango
-                ];
-              };
+            (mkOvrd {
+              name = "void-gui";
+              ovrds = with pkgs; [
+                bzip2
+                libpng
+                brotli
+                libglvnd
+                libuuid
+              ];
             })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "gtk-sys";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.gtk3
-                ];
-              };
-            })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "gdk-sys";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.gtk3
-                ];
-              };
-            })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "gdk-pixbuf-sys";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.gdk-pixbuf
-                ];
-              };
-            })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "atk-sys";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.atkmm
-                ];
-              };
-            })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "cairo-sys-rs";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.cairo
-                ];
-              };
-            })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "glib-sys";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.glib
-                ];
-              };
-            })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "servo-fontconfig-sys";
-              overrideAttrs = drv: {
-                propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ [
-                  pkgs.fontconfig
-                ];
-              };
-            })
-            (pkgs.rustBuilder.rustLib.makeOverride {
-              name = "cmake";
-              overrideAttrs = drv: {
-                propagatedBuildInputs = drv.propagatedBuildInputs or [ ] ++ [
-                  pkgs.cmake
-                ];
-              };
-            })
+            (mkOvrd { name = "pango-sys"; ovrds = with pkgs; [ pango ]; })
+            (mkOvrd { name = "gtk-sys"; ovrds = with pkgs; [ gtk3 ]; })
+            (mkOvrd { name = "gdk-sys"; ovrds = with pkgs; [ gtk3 ]; })
+            (mkOvrd { name = "gdk-pixbuf-sys"; ovrds = with pkgs; [ gdk-pixbuf ]; })
+            (mkOvrd { name = "atk-sys"; ovrds = with pkgs; [ atkmm ]; })
+            (mkOvrd { name = "cairo-sys-rs"; ovrds = with pkgs; [ cairo ]; })
+            (mkOvrd { name = "glib-sys"; ovrds = with pkgs; [ glib ]; })
+            (mkOvrd { name = "servo-fontconfig-sys"; ovrds = with pkgs; [ fontconfig pkgconfig ]; })
+            (mkOvrd { name = "cmake"; ovrds = with pkgs; [ cmake ]; })
           ];
         };
+        workspaceShell = (rustPkgs.workspaceShell {
+          packages = with pkgs; [
+            cmake
+            bzip2
+            libpng
+            brotli
+            libglvnd
+            libuuid
+            pango
+            gtk3
+            gdk-pixbuf
+            cairo
+            glib
+            fontconfig
+            atkmm
+          ];
+        });
       in
       rec {
         formatter = pkgs.nixpkgs-fmt;
+        devShells = { default = workspaceShell; };
         packages = {
           void = (rustPkgs.workspace.void { }).bin;
           void-cli = (rustPkgs.workspace.void-cli { }).bin;
           void-gui = (rustPkgs.workspace.void-gui { }).bin;
           default = packages.void-cli;
+        };
+        apps = rec {
+          void-cli = { type = "app"; program = "${packages.void-cli}/bin/void-cli"; };
+          void-gui = { type = "app"; program = "${packages.void-gui}/bin/void-gui"; };
+          default = void-cli;
         };
       }
     );

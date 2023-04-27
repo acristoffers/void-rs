@@ -76,5 +76,10 @@ pub fn translations() -> HashMap<String, String> {
         "Erro interno desconhecido.".to_string(),
     );
 
+    ts.insert(
+        "CannotEncryptFileError".to_string(),
+        "Não foi possível criptografar o arquivo.".to_string(),
+    );
+
     ts
 }

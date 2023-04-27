@@ -11,7 +11,8 @@ use crate::login::{login_component, LoginPage};
 use i18n::{Language, I18N};
 use iced::theme::Theme;
 use iced::widget::container;
-use iced::window::{Icon, Position};
+use iced::window::icon::from_file_data;
+use iced::window::Position;
 use iced::{executor, Subscription};
 use iced::{Application, Command, Element, Length, Settings};
 use iced_native::Event;
@@ -28,11 +29,11 @@ fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.window.position = Position::Centered;
     settings.default_font = Some(font_data);
-    settings.default_text_size = 36;
+    settings.default_text_size = 36f32;
     settings.text_multithreading = true;
     settings.antialiasing = true;
     if let Some(png_icon) = Assets::get("icon.png") {
-        let icon = Icon::from_file_data(&png_icon.data, None).unwrap();
+        let icon = from_file_data(&png_icon.data, None).unwrap();
         settings.window.icon = Some(icon);
     }
 
@@ -375,5 +376,6 @@ fn void_errors(i18n: &I18N, error: void::Error) -> String {
         void::Error::StoreFileAlreadyExistsError => i18n.tr("StoreFileAlreadyExistsError"),
         void::Error::NoSuchMetadataKey => i18n.tr("NoSuchMetadataKey"),
         void::Error::InternalStructureError => i18n.tr("InternalStructureError"),
+        void::Error::CannotEncryptFileError => i18n.tr("CannotEncryptFileError"),
     }
 }

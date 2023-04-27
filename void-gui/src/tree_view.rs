@@ -44,7 +44,7 @@ impl TreeViewNode {
             (false, _) => text("+"),
         }
         .size(24)
-        .height(Length::Units(24))
+        .height(Length::Fixed(24f32))
         .width(Length::Shrink);
 
         let collapse_button = button(collapse_icon)
@@ -64,14 +64,14 @@ impl TreeViewNode {
         )
         .style(Button::Text)
         .width(Length::Fill)
-        .height(Length::Units(48))
+        .height(Length::Fixed(48f32))
         .on_press(VoidMessage::RouteChanged(VoidRoute::Home(
             self.path.clone(),
         )));
 
         let el = row![collapse_button, label]
             .width(Length::Fill)
-            .height(Length::Units(42))
+            .height(Length::Fixed(42f32))
             .spacing(8)
             .align_items(iced::Alignment::Center);
 
