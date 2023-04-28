@@ -1,7 +1,7 @@
 {
   inputs = {
     nixpkgs.url = github:NixOS/nixpkgs/nixpkgs-unstable;
-    cargo2nix.url = github:acristoffers/cargo2nix;
+    cargo2nix.url = github:acristoffers/cargo2nix/unstable;
     flake-utils.url = github:numtide/flake-utils;
     rust-overlay.url = github:oxalica/rust-overlay;
   };
@@ -18,7 +18,7 @@
         mkOvrd = { name, ovrds }: (pkgs.rustBuilder.rustLib.makeOverride {
           name = name;
           overrideAttrs = drv: {
-            propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ ovrds;
+            propagatedNativeBuildInputs = drv.propagatedNativeBuildInputs or [ ] ++ ovrds ++ [ pkgs.pkgconfig ];
           };
         });
         rustPkgs = pkgs.rustBuilder.makePackageSet {
@@ -42,8 +42,12 @@
             (mkOvrd { name = "atk-sys"; ovrds = with pkgs; [ atkmm ]; })
             (mkOvrd { name = "cairo-sys-rs"; ovrds = with pkgs; [ cairo ]; })
             (mkOvrd { name = "glib-sys"; ovrds = with pkgs; [ glib ]; })
-            (mkOvrd { name = "servo-fontconfig-sys"; ovrds = with pkgs; [ fontconfig pkgconfig ]; })
+            (mkOvrd { name = "servo-fontconfig-sys"; ovrds = with pkgs; [ fontconfig ]; })
             (mkOvrd { name = "cmake"; ovrds = with pkgs; [ cmake ]; })
+            (mkOvrd { name = "graphene-sys"; ovrds = with pkgs; [ graphene ]; })
+            (mkOvrd { name = "gtk4-sys"; ovrds = with pkgs; [ gtk4 ]; })
+            (mkOvrd { name = "gdk4-sys"; ovrds = with pkgs; [ gtk4 ]; })
+            (mkOvrd { name = "libadwaita-sys"; ovrds = with pkgs; [ libadwaita ]; })
           ];
         };
         workspaceShell = (rustPkgs.workspaceShell {

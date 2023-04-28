@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 
-LD_LIBRARY_PATH= nix run github:acristoffers/cargo2nix
+LD_LIBRARY_PATH= nix run github:acristoffers/cargo2nix/unstable
 
 sed -i 's/\[ "emscripten" \]//g' Cargo.nix
 sed -i 's/\[ "metal" \]/(if hostPlatform.isMacOS then [ "metal" ] else [])/g' Cargo.nix
