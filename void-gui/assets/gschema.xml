@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<schemalist>
+  <schema id="me.acristoffers.void" path="/me/acristoffers/void/">
+    <key name="use-system" type="b">
+      <default>true</default>
+      <summary>Use system theme</summary>
+    </key>
+    <key name="dark-theme" type="b">
+      <default>true</default>
+      <summary>Use dark theme</summary>
+    </key>
+  </schema>
+</schemalist>

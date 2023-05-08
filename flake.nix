@@ -10,20 +10,7 @@
         version = "1.0.0";
         pkgs = (import nixpkgs) { inherit system; };
         naersk' = pkgs.callPackage naersk { };
-        buildInputs = with pkgs; [
-          atkmm
-          brotli
-          bzip2
-          cairo
-          fontconfig
-          gdk-pixbuf
-          glib
-          gtk3
-          libglvnd
-          libpng
-          libuuid
-          pango
-        ];
+        buildInputs = with pkgs; [ libadwaita librsvg ];
         mkPackage = { name, buildInputs ? [ ] }: naersk'.buildPackage {
           cargoBuildOptions = opts: opts ++ [ "--package" name ];
           inherit buildInputs;
