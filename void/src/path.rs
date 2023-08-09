@@ -97,7 +97,7 @@ impl Path {
             remove
         };
 
-        let new_root: String = if new_root.ends_with('/') {
+        let new_root: String = if new_root.ends_with('/') && new_root != "/" {
             new_root[..new_root.len() - 1].into()
         } else {
             new_root
