@@ -16,7 +16,7 @@
           inherit buildInputs;
           inherit name;
           inherit version;
-          nativeBuildInputs = with pkgs;[ cmake pkgconfig ];
+          nativeBuildInputs = with pkgs;[ cmake pkg-config ];
           src = ./.;
         };
       in
@@ -27,7 +27,7 @@
         packages.void-gui = mkPackage { name = "void-gui"; inherit buildInputs; };
         packages.default = packages.void-cli;
         devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkgconfig ];
+          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config ];
           inherit buildInputs;
         };
       }
