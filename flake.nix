@@ -26,6 +26,10 @@
         packages.void-cli = mkPackage { name = "void-cli"; };
         packages.void-gui = mkPackage { name = "void-gui"; inherit buildInputs; };
         packages.default = packages.void-cli;
+        apps = rec {
+          void-cli = { type = "app"; program = "${packages.default}/bin/void-cli"; };
+          default = void-cli;
+        };
         devShell = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config ];
           inherit buildInputs;
