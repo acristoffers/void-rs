@@ -16,8 +16,13 @@
           inherit buildInputs;
           inherit name;
           inherit version;
-          nativeBuildInputs = with pkgs;[ cmake pkg-config ];
+          nativeBuildInputs = with pkgs;[ cmake pkg-config stdenv ];
           src = ./.;
+          postInstall = "
+            if [ -d target/release/share ]; then
+              cp -r target/release/share $out/share
+            fi
+          ";
         };
       in
       rec {
