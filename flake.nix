@@ -36,7 +36,7 @@
           default = void-cli;
         };
         devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config ];
+          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox ];
           inherit buildInputs;
         };
       }
