@@ -7,16 +7,16 @@ description = "Encrypted file store."
 
 [dependencies]
 void = { path = "../void" }
-clap = { version = "4.5.4", features = ["derive", "env"] }
+clap = { version = "4.5.18", features = ["derive", "env"] }
 bytesize = "1.3.0"
 prettytable-rs = { version = "0.10.0"}
 rpassword = { version = "7.3.1"}
 term_size = { version = "0.3.2"}
 
 [build-dependencies]
-clap = { version = "4.5.4", features = ["derive", "env"] }
-clap_complete = "4.5.1"
-clap_mangen = "0.2.20"
+clap = { version = "4.5.18", features = ["derive", "env"] }
+clap_complete = "4.5.29"
+clap_mangen = "0.2.23"
 fs_extra = "1.3.0"
 
 [[bin]]

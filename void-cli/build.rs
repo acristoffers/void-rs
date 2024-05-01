@@ -12,11 +12,12 @@ use std::path::{Path, PathBuf};
 include!("src/args.rs");
 
 fn get_output_path() -> PathBuf {
-    //<root or manifest path>/target/<profile>/
     let out_dir = env::var("OUT_DIR").unwrap();
     let build_type = env::var("PROFILE").unwrap();
-    let target = out_dir.split_at(out_dir.find(("target/".to_string() + &build_type).as_str()).unwrap()).0;
-    Path::new(&target).join("target").join(build_type)
+    let target = out_dir
+        .split_at(out_dir.find(build_type.as_str()).unwrap())
+        .0;
+    Path::new(&target).join(build_type)
 }
 
 fn main() -> Result<(), Error> {
@@ -30,37 +31,37 @@ fn main() -> Result<(), Error> {
     let mut cmd = Arguments::command();
     let bash_path = generate_to(
         shells::Bash,
-        &mut cmd,            // We need to specify what generator to use
-        "void-cli", // We need to specify the bin name manually
-        outdir.clone(),      // We need to specify where to write to
+        &mut cmd,       // We need to specify what generator to use
+        "void-cli",     // We need to specify the bin name manually
+        outdir.clone(), // We need to specify where to write to
     )?;
 
     let fish_path = generate_to(
         shells::Fish,
-        &mut cmd,            // We need to specify what generator to use
-        "void-cli", // We need to specify the bin name manually
-        outdir.clone(),      // We need to specify where to write to
+        &mut cmd,       // We need to specify what generator to use
+        "void-cli",     // We need to specify the bin name manually
+        outdir.clone(), // We need to specify where to write to
     )?;
 
     let zsh_path = generate_to(
         shells::Zsh,
-        &mut cmd,            // We need to specify what generator to use
-        "void-cli", // We need to specify the bin name manually
-        outdir.clone(),      // We need to specify where to write to
+        &mut cmd,       // We need to specify what generator to use
+        "void-cli",     // We need to specify the bin name manually
+        outdir.clone(), // We need to specify where to write to
     )?;
 
     let ps_path = generate_to(
         shells::PowerShell,
-        &mut cmd,            // We need to specify what generator to use
-        "void-cli", // We need to specify the bin name manually
-        outdir.clone(),      // We need to specify where to write to
+        &mut cmd,       // We need to specify what generator to use
+        "void-cli",     // We need to specify the bin name manually
+        outdir.clone(), // We need to specify where to write to
     )?;
 
     let elvish_path = generate_to(
         shells::Elvish,
-        &mut cmd,            // We need to specify what generator to use
-        "void-cli", // We need to specify the bin name manually
-        outdir.clone(),      // We need to specify where to write to
+        &mut cmd,       // We need to specify what generator to use
+        "void-cli",     // We need to specify the bin name manually
+        outdir.clone(), // We need to specify where to write to
     )?;
 
     let man = clap_mangen::Man::new(cmd);
