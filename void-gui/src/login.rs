@@ -6,7 +6,7 @@
 
 use libadwaita as adw;
 
-use adw::gtk::{Box, Button, Image, Label, Orientation, TextView};
+use adw::gtk::{Box, Button, Image, Label, Orientation};
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar};
 
@@ -36,18 +36,12 @@ pub fn login_window(app: &Application) -> ApplicationWindow {
     header_bar.pack_end(&setting_button);
 
     let image = Image::new();
-    image.set_from_resource(Some("/icon.png"));
+    image.set_resource(Some("/icon.png"));
     image.set_width_request(256);
     image.set_height_request(256);
 
     let name = Label::new(Some("Void"));
     name.set_css_classes(&["title-1"]);
-
-    let text = TextView::new();
-    text.set_css_classes(&["body"]);
-    text.set_justification(adw::gtk::Justification::Center);
-    let text_buffer = text.buffer();
-    text_buffer.set_text("Please use the Open and Create buttons.");
 
     let view = Box::new(Orientation::Vertical, 0);
     view.set_valign(adw::gtk::Align::Center);
@@ -56,7 +50,6 @@ pub fn login_window(app: &Application) -> ApplicationWindow {
     view.set_spacing(16);
     view.append(&image);
     view.append(&name);
-    view.append(&text);
 
     let content = Box::new(Orientation::Vertical, 0);
     content.append(&header_bar);

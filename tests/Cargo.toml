@@ -7,7 +7,7 @@ description = "Encrypted file store."
 
 [dependencies]
 void = { path = "../void" }
-rand = "0.8.5"
+rand = "0.9.0"
 
 [[test]]
 name = "void"

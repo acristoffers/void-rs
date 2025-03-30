@@ -2,14 +2,18 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    gitignore.url = "github:hercules-ci/gitignore.nix";
+    gitignore.inputs.nixpkgs.follows = "nixpkgs";
   };
-  outputs = { self, flake-utils, nixpkgs }:
+  outputs = { self, flake-utils, nixpkgs, gitignore }:
     flake-utils.lib.eachDefaultSystem (system:
       let
+        inherit (gitignore.lib) gitignoreSource;
         version = "1.0.0";
         pkgs = (import nixpkgs) { inherit system; };
-        nativeBuildInputs = with pkgs; [ cmake pkg-config rustc cargo stdenv ];
-        buildInputs = with pkgs; [ libadwaita librsvg ];
+        nativeBuildInputs = with pkgs; [ cmake pkg-config rustc cargo stdenv glib ];
+        buildInputs = with pkgs; [ libadwaita librsvg makeWrapper ];
         mkPackage = { name }: pkgs.rustPlatform.buildRustPackage rec {
           cargoBuildFlags = [ "--package ${name}" ];
           cargoTestFlags = cargoBuildFlags;
@@ -18,12 +22,15 @@
           inherit buildInputs;
           inherit nativeBuildInputs;
           cargoLock.lockFile = ./Cargo.lock;
-          src = ./.;
-          postInstall = "
-            if [ -d target/*/release/share ]; then
-              cp -r target/*/release/share $out/share
+          src = gitignoreSource ./.;
+          postInstall = ''
+            for dir in target/*/release/share; do
+              cp -r $dir $out/share
+            done
+            if [ -f $out/bin/void-gui ]; then
+              wrapProgram $out/bin/void-gui --set GSETTINGS_SCHEMA_DIR $out/share/gsettings-schema/void-gui-${version}/glib-2.0/schemas
             fi
-          ";
+          '' ;
         };
       in
       rec {
@@ -37,7 +44,7 @@
           default = void-cli;
         };
         devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox ];
+          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox fzf ];
           inherit buildInputs;
         };
       }
