@@ -220,6 +220,14 @@ pub enum Commands {
         #[arg()]
         tags: Vec<String>,
     },
+
+    /// Remove orphaned encrypted chunks from the store directory
+    #[command()]
+    GC {
+        /// Path to the store folder
+        #[arg(short = 's', env = "VOID_STORE")]
+        store_path: String,
+    },
 }
 
 static LONG_ABOUT: &str = "

@@ -583,7 +583,7 @@ impl Filesystem {
     /// # Returns
     ///
     /// * A list of File objects for all nodes in the store. In this case, the
-    /// name is the full path of the element.
+    ///   name is the full path of the element.
     pub fn ls_all(&self) -> Result<Vec<File>, Error> {
         let nodes = self
             .nodes
@@ -648,6 +648,11 @@ impl Filesystem {
         Ok(())
     }
 
+    /// Returns the set of all data IDs currently referenced in the store.
+    pub fn data_ids(&self) -> std::collections::HashSet<u64> {
+        self.data.iter().map(|d| d.id).collect()
+    }
+
     /// List all tags in the filesystem.
     ///
     /// # Returns
@@ -667,7 +672,7 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `tags` - List of tags to search for. If the tag starts with !, search
-    ///            for files not containing that tag.
+    ///   for files not containing that tag.
     ///
     /// # Returns
     ///
@@ -825,7 +830,7 @@ mod tests {
         assert_eq!(id, 3);
         assert_eq!(fs.touch("/a/b/c/d"), Err(Error::CannotCreateDirectoryError));
         let node = fs.nodes.iter().find(|node| node.id == id).unwrap();
-        assert_eq!(node.is_file, true)
+        assert!(node.is_file)
     }
 
     #[test]
@@ -834,10 +839,10 @@ mod tests {
         let id = fs.touch("/a/b/c").unwrap();
         let file = fs.get(id).unwrap();
         assert_eq!(file.id, id);
-        assert_eq!(file.is_file, true);
+        assert!(file.is_file);
         let folder = fs.get(1).unwrap();
         assert_eq!(folder.id, 1);
-        assert_eq!(folder.is_file, false);
+        assert!(!folder.is_file);
     }
 
     #[test]

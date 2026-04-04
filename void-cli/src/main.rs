@@ -8,7 +8,6 @@ mod args;
 mod store;
 
 use args::{Arguments, Commands, Parser};
-use rpassword;
 
 fn main() {
     let options = Arguments::parse();
@@ -163,6 +162,13 @@ fn main() {
         Commands::TagSearch { store_path, tags } => {
             let pswd = read_password(options.password);
             if store::tag_search(store_path, tags, pswd).is_none() {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::GC { store_path } => {
+            let pswd = read_password(options.password);
+            if store::gc(store_path, pswd).is_none() {
                 std::process::exit(1);
             }
         }

@@ -144,10 +144,7 @@ impl Store {
             salt: self.salt,
         };
 
-        let serialized = match store_file.fb_serialize() {
-            Ok(bytes) => bytes,
-            Err(err) => return Err(err),
-        };
+        let serialized = store_file.fb_serialize()?;
 
         match fs::write(store_journal.path, serialized.as_slice()) {
             Ok(_) => Ok(()),
@@ -367,11 +364,7 @@ impl Store {
                 let iv = crypto::uuid();
                 let key = crypto::random_key();
 
-                let data = Data {
-                    id: 0,
-                    key,
-                    iv,
-                };
+                let data = Data { id: 0, key, iv };
 
                 let file = self.fs.append(node_id, &data)?;
                 let data = file
@@ -424,7 +417,10 @@ impl Store {
             return Err(Error::FileAlreadyExistsError);
         }
 
-        let id = self.fs.exists(&store_path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&store_path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         let file = self.fs.get(id)?;
 
         if file.is_file {
@@ -484,7 +480,10 @@ impl Store {
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
         let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         let data = self.fs.rm(id)?;
 
         for d in data {
@@ -511,7 +510,10 @@ impl Store {
         let src = Path::new(&src).ok_or(Error::CannotParseError)?;
         let dst = Path::new(&dst).ok_or(Error::CannotParseError)?;
 
-        let src_id = self.fs.exists(&src.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let src_id = self
+            .fs
+            .exists(&src.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         let dst_id = self.fs.mkdirp(&dst.parent)?;
 
         self.fs.mv(src_id, dst_id)
@@ -535,7 +537,10 @@ impl Store {
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
         if path.path != "/" {
-            let id = self.fs.exists(&path.path)?.ok_or(Error::FolderDoesNotExistError)?;
+            let id = self
+                .fs
+                .exists(&path.path)?
+                .ok_or(Error::FolderDoesNotExistError)?;
             let file = self.fs.get(id)?;
             if file.is_file {
                 Ok(vec![file])
@@ -556,7 +561,10 @@ impl Store {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         self.fs.truncate(id)?;
 
         self.save()
@@ -576,7 +584,10 @@ impl Store {
 
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         self.fs.set_metadata(id, &key, &value)?;
 
         self.save()
@@ -594,7 +605,10 @@ impl Store {
 
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         self.fs.rm_metadata(id, &key)?;
 
         self.save()
@@ -616,7 +630,10 @@ impl Store {
 
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         self.fs.get_metadata(id, &key)
     }
 
@@ -633,7 +650,10 @@ impl Store {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         let file = self.fs.get(id)?;
 
         Ok(file.metadata)
@@ -649,7 +669,10 @@ impl Store {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         self.fs.add_tag(id, tag)?;
 
         self.save()
@@ -665,7 +688,10 @@ impl Store {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         self.fs.rm_tag(id, tag)?;
 
         self.save()
@@ -680,7 +706,10 @@ impl Store {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         self.fs.clear_tag(id)?;
 
         self.save()
@@ -708,7 +737,10 @@ impl Store {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
 
-        let id = self.fs.exists(&path.path)?.ok_or(Error::FileDoesNotExistError)?;
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
         let node = self.fs.get(id)?;
 
         Ok(node.tags)
@@ -720,13 +752,48 @@ impl Store {
     ///
     /// # Arguments
     ///
-    /// * `tags` - List of tags to search for. If the tag starts with !, search
-    ///            for files not containing that tag.
+    /// * `tags` - List of tags to search for. If the tag starts with !, search for files not
+    ///   containing that tag.
     ///
     /// # Returns
     ///
     /// * A list of files matching the given tags.
     pub fn tag_search(&self, tags: Vec<String>) -> Vec<File> {
         self.fs.search_tag(tags)
+    }
+
+    /// Removes orphaned chunk files from the store directory.
+    ///
+    /// Orphaned chunks are encrypted data files that exist on disk but are no
+    /// longer referenced by the store index. This can happen when a `save()`
+    /// fails after chunks have already been written (e.g. disk full).
+    ///
+    /// # Returns
+    ///
+    /// * The number of orphaned files removed.
+    pub fn gc(&self) -> Result<usize, Error> {
+        let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
+
+        let referenced: std::collections::HashSet<String> = self
+            .fs
+            .data_ids()
+            .iter()
+            .map(|&id| format!("{:0>32}", hex::encode(id.to_be_bytes())))
+            .collect();
+
+        let mut removed = 0;
+        let entries = fs::read_dir(&store_folder.path).map_err(|_| Error::CannotReadFileError)?;
+
+        for entry in entries.filter_map(Result::ok) {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name == "Store.void" {
+                continue;
+            }
+            if !referenced.contains(&name) && fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
+        }
+
+        Ok(removed)
     }
 }

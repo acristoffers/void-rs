@@ -6,7 +6,7 @@
 
 use super::store::Error;
 use aes_gcm::{
-    aead::{Aead, KeyInit, consts::U16},
+    aead::{consts::U16, Aead, KeyInit},
     aes::Aes256,
     AesGcm, Nonce,
 };
@@ -167,7 +167,10 @@ mod tests {
         assert_eq!(key1, key2, "same inputs must produce the same key");
 
         let key3 = derive_key("wrong_password", &salt).expect("derive_key failed");
-        assert_ne!(key1, key3, "different passwords must produce different keys");
+        assert_ne!(
+            key1, key3,
+            "different passwords must produce different keys"
+        );
     }
 
     #[test]
