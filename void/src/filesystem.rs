@@ -308,15 +308,18 @@ impl Filesystem {
     /// * `id` - Id of the node to move;
     /// * `parent` - Id of the new parent;
     pub fn mv(&mut self, id: u64, parent: u64) -> Result<(), Error> {
-        let node = self
+        // Validate source and capture needed ids before any mutations.
+        let node_id = self
             .nodes
             .iter()
             .find(|node| node.id == id)
+            .map(|node| node.id)
             .ok_or(Error::FileDoesNotExistError)?;
-        let new_parent = self
+        let new_parent_id = self
             .nodes
             .iter()
             .find(|node| node.id == parent)
+            .map(|node| node.id)
             .ok_or(Error::FolderDoesNotExistError)?;
         let old_parent = self
             .graph
@@ -324,22 +327,27 @@ impl Filesystem {
             .find(|(_, value)| value.contains(&id))
             .map(|(key, _)| key.clone())
             .ok_or(Error::InternalStructureError)?;
-        let old_children = self
+
+        // Remove node from old parent.
+        let old_children: Vec<u64> = self
             .graph
             .get(&old_parent)
             .ok_or(Error::InternalStructureError)?
             .iter()
-            .filter(|&id| id != &node.id)
+            .filter(|&&child_id| child_id != node_id)
             .copied()
             .collect();
-        self.graph.insert(old_parent.clone(), old_children);
-        let new_children = self
+        self.graph.insert(old_parent, old_children);
+
+        // Append node to new parent's existing children.
+        let existing: Vec<u64> = self
             .graph
-            .get(&old_parent)
-            .ok_or(Error::InternalStructureError)?;
-        let mut children = vec![id];
-        children.extend(new_children);
-        self.graph.insert(new_parent.id.to_string(), children);
+            .get(&new_parent_id.to_string())
+            .cloned()
+            .unwrap_or_default();
+        let mut new_children = vec![id];
+        new_children.extend(existing);
+        self.graph.insert(new_parent_id.to_string(), new_children);
         Ok(())
     }
 
@@ -871,6 +879,25 @@ mod tests {
         assert_eq!(children.len(), 0);
         let children = fs.ls(parent).unwrap();
         assert_eq!(children.len(), 1);
+    }
+
+    #[test]
+    fn test_filesystem_mv_preserves_existing_children() {
+        // Moving into a folder that already has children must not lose them.
+        let mut fs = Filesystem::new();
+        let src = fs.touch("/a/b").unwrap();
+        let dst_parent = fs.mkdirp("/c").unwrap();
+        fs.touch("/c/existing").unwrap();
+
+        fs.mv(src, dst_parent).unwrap();
+
+        // /a should be empty (b was moved out)
+        let a_children = fs.ls(1).unwrap(); // node 1 is /a
+        assert_eq!(a_children.len(), 0);
+
+        // /c should have both "existing" and the moved "b"
+        let c_children = fs.ls(dst_parent).unwrap();
+        assert_eq!(c_children.len(), 2);
     }
 
     #[test]
