@@ -33,6 +33,7 @@ pub enum Error {
     StoreFileAlreadyExistsError,
     NoSuchMetadataKey,
     InternalStructureError,
+    KeyDerivationError,
 }
 
 impl Display for Error {
@@ -104,7 +105,6 @@ impl FlexBufferSerializable for Filesystem {
 #[derive(Debug, Clone)]
 pub struct Store {
     fs: Filesystem,
-    iv: [u8; 16],
     key: [u8; 32],
     path: String,
     salt: [u8; 16],
@@ -130,7 +130,8 @@ impl Store {
         self.fs.sort();
         let fs_bytes = self.fs.fb_serialize()?;
 
-        let fs = crypto::encrypt(fs_bytes.as_slice(), &self.key, &self.iv)?;
+        let iv = crypto::uuid(); // fresh nonce on every save
+        let fs = crypto::encrypt(fs_bytes.as_slice(), &self.key, &iv)?;
         let fs_hash_vec = crypto::hash(fs.as_slice(), &self.salt);
         let mut fs_hash = [0u8; 32];
 
@@ -139,7 +140,7 @@ impl Store {
         let store_file = StoreFile {
             fs,
             fs_hash,
-            iv: self.iv,
+            iv,
             salt: self.salt,
         };
 
@@ -182,12 +183,10 @@ impl Store {
         }
 
         let salt = crypto::uuid();
-        let iv = crypto::uuid();
-        let key = crypto::derive_key(&password, &salt, &iv);
+        let key = crypto::derive_key(&password, &salt)?;
 
         let mut store = Store {
             fs: Filesystem::new(),
-            iv,
             key,
             path: store_folder.path,
             salt,
@@ -223,7 +222,13 @@ impl Store {
 
         let salt = store_file.salt;
         let iv = store_file.iv;
-        let key = crypto::derive_key(password.as_str(), &salt, &iv);
+
+        let computed_hash = crypto::hash(store_file.fs.as_slice(), &salt);
+        if computed_hash != store_file.fs_hash {
+            return Err(Error::CannotDecryptFileError);
+        }
+
+        let key = crypto::derive_key(password.as_str(), &salt)?;
 
         let fs = store_file.fs.as_slice();
         let fs = crypto::decrypt(fs, &key, &iv);
@@ -232,7 +237,6 @@ impl Store {
 
         let store = Store {
             fs: *fs,
-            iv,
             key,
             path: store_folder.path,
             salt,
@@ -356,16 +360,13 @@ impl Store {
                     break;
                 }
 
-                let salt = crypto::uuid();
                 let iv = crypto::uuid();
-                let pswd = hex::encode(crypto::uuid());
-                let key = crypto::derive_key(&pswd, &salt, &iv);
+                let key = crypto::random_key();
 
                 let data = Data {
                     id: 0,
                     key,
                     iv,
-                    salt,
                 };
 
                 let file = self.fs.append(node_id, &data)?;

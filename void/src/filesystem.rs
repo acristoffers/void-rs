@@ -26,7 +26,6 @@ pub struct Data {
     pub id: u64,
     pub key: [u8; 32],
     pub iv: [u8; 16],
-    pub salt: [u8; 16],
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -728,28 +727,25 @@ mod tests {
     #[test]
     fn test_filesystem_next_data_id() {
         let rand = crypto::uuid();
-        let key = crypto::derive_key("haha", &rand, &rand);
+        let key = crypto::random_key();
         let mut fs = Filesystem::new();
         assert_eq!(fs.next_data_id(), 1);
         fs.data.push(Data {
             id: 1,
             key,
             iv: rand,
-            salt: rand,
         });
         assert_eq!(fs.next_data_id(), 2);
         fs.data.push(Data {
             id: 2,
             key,
             iv: rand,
-            salt: rand,
         });
         assert_eq!(fs.next_data_id(), 3);
         fs.data.push(Data {
             id: 5,
             key,
             iv: rand,
-            salt: rand,
         });
         assert_eq!(fs.next_data_id(), 3);
     }
@@ -883,15 +879,10 @@ mod tests {
         fs.touch("/a/b").unwrap();
         fs.touch("/a/c").unwrap();
         let id = fs.touch("/a/d").unwrap();
-        let salt = crypto::uuid();
-        let iv = crypto::uuid();
-        let pswd = hex::encode(crypto::uuid());
-        let key = crypto::derive_key(&pswd, &salt, &iv);
         let data = Data {
             id: 0,
-            key,
-            iv,
-            salt,
+            key: crypto::random_key(),
+            iv: crypto::uuid(),
         };
         fs.append(id, &data).unwrap();
         fs.rm(1).unwrap();
@@ -907,15 +898,10 @@ mod tests {
         fs.touch("/c/d/e").unwrap();
         fs.touch("/d/e").unwrap();
         let id = fs.touch("/e").unwrap();
-        let salt = crypto::uuid();
-        let iv = crypto::uuid();
-        let pswd = hex::encode(crypto::uuid());
-        let key = crypto::derive_key(&pswd, &salt, &iv);
         let data = Data {
             id: 0,
-            key,
-            iv,
-            salt,
+            key: crypto::random_key(),
+            iv: crypto::uuid(),
         };
         fs.append(id, &data).unwrap();
         fs.graph = HashMap::new();
@@ -930,15 +916,10 @@ mod tests {
     fn test_filesystem_append() {
         let mut fs = Filesystem::new();
         let id = fs.touch("/file").unwrap();
-        let salt = crypto::uuid();
-        let iv = crypto::uuid();
-        let pswd = hex::encode(crypto::uuid());
-        let key = crypto::derive_key(&pswd, &salt, &iv);
         let data = Data {
             id: 0,
-            key,
-            iv,
-            salt,
+            key: crypto::random_key(),
+            iv: crypto::uuid(),
         };
         let file = fs.append(id, &data).unwrap();
         assert_eq!(file.data[0].id, 1);
@@ -952,15 +933,10 @@ mod tests {
     fn test_filesystem_truncate() {
         let mut fs = Filesystem::new();
         let id = fs.touch("/a").unwrap();
-        let salt = crypto::uuid();
-        let iv = crypto::uuid();
-        let pswd = hex::encode(crypto::uuid());
-        let key = crypto::derive_key(&pswd, &salt, &iv);
         let data = Data {
             id: 0,
-            key,
-            iv,
-            salt,
+            key: crypto::random_key(),
+            iv: crypto::uuid(),
         };
         fs.append(id, &data).unwrap();
         fs.truncate(id).unwrap();

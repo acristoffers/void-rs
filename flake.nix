@@ -43,7 +43,7 @@
           void-cli = { type = "app"; program = "${packages.default}/bin/void-cli"; };
           default = void-cli;
         };
-        devShell = pkgs.mkShell {
+        devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox fzf ];
           inherit buildInputs;
         };

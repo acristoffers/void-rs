@@ -12,8 +12,6 @@ use aes_gcm::{
 };
 use blake2::digest::{Update, VariableOutput};
 use blake2::Blake2bVar;
-use hkdf::Hkdf;
-use sha2::Sha256;
 use std::result::Result;
 use std::vec::Vec;
 use uuid::Uuid;
@@ -55,33 +53,28 @@ pub(crate) fn uuid() -> [u8; 16] {
     *Uuid::new_v4().as_bytes()
 }
 
-/// Returns a [u8; 32] array with the value of the key.
-/// It uses HKDF for key derivation.
-///
-/// A key derivator algorithm will generate a cryptographic key from a
-/// password, salt and IV. It does so in a way that is inefficient to run
-/// many times in a row, preventing repetition attacks. It is also the best
-/// way to store passwords in databases.
+/// Derives a 32-byte encryption key from a password using Argon2id.
+/// Argon2id is memory-hard, making brute-force attacks expensive.
 ///
 /// # Arguments
 ///
-/// * `pswd` - A string that holds the password.
-/// * `salt` - A byte array that holds the salt. [u0; 16].
-/// * `iv` - A byte array that holds the initial value. [u0; 16].
-///
-/// # Example
-///
-/// ```ignore
-/// let pswd = "123456";
-/// let salt = uuid();
-/// let iv = uuid();
-/// let dkey = derive_key(&pswd, &salt, &iv);
-/// ```
-pub(crate) fn derive_key(pswd: &str, salt: &[u8; 16], iv: &[u8; 16]) -> [u8; 32] {
-    let hk = Hkdf::<Sha256>::new(Some(salt), iv);
+/// * `pswd` - The user's password.
+/// * `salt` - A random 16-byte salt, unique per store.
+pub(crate) fn derive_key(pswd: &str, salt: &[u8; 16]) -> Result<[u8; 32], Error> {
     let mut key = [0u8; 32];
-    hk.expand(pswd.as_bytes(), &mut key)
-        .expect("Error generating key.");
+    argon2::Argon2::default()
+        .hash_password_into(pswd.as_bytes(), salt, &mut key)
+        .map_err(|_| Error::KeyDerivationError)?;
+    Ok(key)
+}
+
+/// Generates a cryptographically random 32-byte key.
+pub(crate) fn random_key() -> [u8; 32] {
+    let mut key = [0u8; 32];
+    let a = Uuid::new_v4();
+    let b = Uuid::new_v4();
+    key[..16].copy_from_slice(a.as_bytes());
+    key[16..].copy_from_slice(b.as_bytes());
     key
 }
 
@@ -144,7 +137,7 @@ mod tests {
     #[test]
     fn test_uuid() {
         let uuid = uuid();
-        assert!(uuid.len() > 0);
+        assert!(!uuid.is_empty());
     }
 
     #[test]
@@ -157,7 +150,7 @@ mod tests {
         let hash = hash(name.as_bytes(), &salt);
         assert_eq!(
             "f5467b71433f075b7731aa77e5bb6d94165cedf2f45c7854b7be9283bb6dc404",
-            hex::encode(&hash)
+            hex::encode(hash)
         );
     }
 
@@ -166,21 +159,19 @@ mod tests {
         let pswd = "123456";
         let salt_vec =
             hex::decode("8a5eaba62bf74487ac35ce27050445cd").expect("Could not decode salt");
-        let iv_vec =
-            hex::decode("8a5eaba62bf74487ac35ce27050445cd").expect("Could not decode salt");
         let mut salt = [0u8; 16];
-        let mut iv = [0u8; 16];
         salt.copy_from_slice(salt_vec.as_slice());
-        iv.copy_from_slice(iv_vec.as_slice());
-        let dkey = derive_key(&pswd, &salt, &iv);
-        assert_eq!(
-            "aa4458163f34dcd687a600beba020c1f3c9351b18b38b8cc981a86be69b4cee4",
-            hex::encode(&dkey)
-        );
+
+        let key1 = derive_key(pswd, &salt).expect("derive_key failed");
+        let key2 = derive_key(pswd, &salt).expect("derive_key failed");
+        assert_eq!(key1, key2, "same inputs must produce the same key");
+
+        let key3 = derive_key("wrong_password", &salt).expect("derive_key failed");
+        assert_ne!(key1, key3, "different passwords must produce different keys");
     }
 
     #[test]
-    fn test_encrypt() {
+    fn test_encrypt_decrypt() {
         let pswd = "123456";
         let salt_vec =
             hex::decode("8a5eaba62bf74487ac35ce27050445cd").expect("Could not decode salt");
@@ -190,26 +181,10 @@ mod tests {
         let mut iv = [0u8; 16];
         salt.copy_from_slice(salt_vec.as_slice());
         iv.copy_from_slice(iv_vec.as_slice());
-        let dkey = derive_key(&pswd, &salt, &iv);
+        let key = derive_key(pswd, &salt).expect("derive_key failed");
         let msg = "Hello World!";
-        let cipher = encrypt(msg.as_bytes(), &dkey, &iv).expect("Error encrypting");
-        assert_eq!("74536b5f588078d9c70363a4c7b35deea4f2902a8bed6f693bfeffba", hex::encode(&cipher));
-    }
-
-    #[test]
-    fn test_decrypt() {
-        let pswd = "123456";
-        let salt_vec =
-            hex::decode("8a5eaba62bf74487ac35ce27050445cd").expect("Could not decode salt");
-        let iv_vec =
-            hex::decode("8a5eaba62bf74487ac35ce27050445cd").expect("Could not decode salt");
-        let mut salt = [0u8; 16];
-        let mut iv = [0u8; 16];
-        salt.copy_from_slice(salt_vec.as_slice());
-        iv.copy_from_slice(iv_vec.as_slice());
-        let dkey = derive_key(&pswd, &salt, &iv);
-        let msg = hex::decode("74536b5f588078d9c70363a4c7b35deea4f2902a8bed6f693bfeffba").unwrap();
-        let cipher = decrypt(&msg, &dkey, &iv).unwrap();
-        assert_eq!("Hello World!", std::str::from_utf8(&cipher).unwrap());
+        let cipher = encrypt(msg.as_bytes(), &key, &iv).expect("Error encrypting");
+        let plaintext = decrypt(&cipher, &key, &iv).expect("Error decrypting");
+        assert_eq!(msg, std::str::from_utf8(&plaintext).unwrap());
     }
 }

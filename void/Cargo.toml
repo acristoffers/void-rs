@@ -10,7 +10,7 @@ blake2 = "0.10.6"
 bytesize = "2.3.1"
 flexbuffers = "25.12.19"
 hex = "0.4.3"
-hkdf = "0.13.0"
+argon2 = "0.5"
 itertools = "0.14.0"
 path-absolutize = "3.1.1"
 rand = "0.10.0"
@@ -19,7 +19,7 @@ serde_derive = "1.0.228"
 tree_magic = "0.2.3"
 walkdir = "2.5.0"
 aes-gcm = "0.10.3"
-sha2 = "0.11.0"
+
 clap = { version = "4.6.0", features = ["derive", "env"] }
 serde = { version = "1.0.228", features = ["derive"] }
 uuid = { version = "1.23.0", features = ["serde", "v4"] }
