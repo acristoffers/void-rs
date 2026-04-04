@@ -7,7 +7,7 @@
 use crate::filesystem::{Data, File, Filesystem};
 
 use super::crypto;
-pub use super::path::{EasyPath, Path};
+pub use super::path::{EasyPath, RealPath, VirtualPath};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -75,7 +75,7 @@ impl Store {
     /// * `path` - Path of the store.
     /// * `password` - Password that encrypts the store.
     fn save(&mut self) -> Result<(), Error> {
-        let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
+        let store_folder = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
         let store_journal = store_folder
             .join("Store.void")
             .ok_or(Error::CannotParseError)?;
@@ -118,7 +118,7 @@ impl Store {
         let path: String = path.into();
         let password: String = password.into();
 
-        let store_folder = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let store_folder = RealPath::new(&path).ok_or(Error::CannotParseError)?;
         let store_journal = store_folder
             .join("Store.void")
             .ok_or(Error::CannotParseError)?;
@@ -159,7 +159,7 @@ impl Store {
         let path: String = path.into();
         let password: String = password.into();
 
-        let store_folder = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let store_folder = RealPath::new(&path).ok_or(Error::CannotParseError)?;
         let store_journal = store_folder
             .join("Store.void")
             .ok_or(Error::CannotParseError)?;
@@ -214,9 +214,9 @@ impl Store {
         let file_path: String = file_path.into();
         let store_path: String = store_path.into();
 
-        let file_path = Path::new(&file_path).ok_or(Error::CannotParseError)?;
-        let store_path = Path::new(&store_path).ok_or(Error::CannotParseError)?;
-        let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
+        let file_path = RealPath::new(&file_path).ok_or(Error::CannotParseError)?;
+        let store_path = VirtualPath::new(&store_path).ok_or(Error::CannotParseError)?;
+        let store_folder = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
 
         if file_path.is_dir() {
             let store_path = match self.fs.exists(&store_path.path)? {
@@ -246,9 +246,9 @@ impl Store {
                     &file_path.parent
                 };
 
-                let entry_path: Path = entry.path().to_path_buf().into();
+                let entry_path: RealPath = entry.path().to_path_buf().into();
                 let store_path = entry_path
-                    .with_root(file_path, &store_path.path)
+                    .reroot_as_virtual(file_path, &store_path.path)
                     .ok_or(Error::CannotParseError)?;
 
                 if entry
@@ -366,8 +366,8 @@ impl Store {
         let file_path: String = file_path.into();
         let store_path: String = store_path.into();
 
-        let store_path = Path::new(&store_path).ok_or(Error::CannotParseError)?;
-        let file_path = Path::new(&file_path).ok_or(Error::CannotParseError)?;
+        let store_path = VirtualPath::new(&store_path).ok_or(Error::CannotParseError)?;
+        let file_path = RealPath::new(&file_path).ok_or(Error::CannotParseError)?;
 
         if file_path.exists() {
             return Err(Error::FileAlreadyExistsError);
@@ -380,27 +380,19 @@ impl Store {
         let file = self.fs.get(id)?;
 
         if file.is_file {
-            let disk_path = Path::new(&store_path.path)
-                .ok_or(Error::CannotParseError)?
-                .with_root(&store_path.path, &file_path.path)
-                .ok_or(Error::CannotParseError)?;
-
-            if !Path::new(&disk_path.parent)
-                .ok_or(Error::CannotParseError)?
-                .exists()
-            {
-                fs::create_dir_all(disk_path.parent)
+            if !std::path::Path::new(&file_path.parent).exists() {
+                fs::create_dir_all(&file_path.parent)
                     .map_err(|_| Error::CannotCreateDirectoryError)?;
             }
 
-            let file_handle = fs::File::create(&disk_path.path);
+            let file_handle = fs::File::create(&file_path.path);
             let mut file_handle = file_handle.map_err(|_| Error::CannotWriteFileError)?;
 
-            let store_path = Path::new(&self.path).ok_or(Error::CannotParseError)?;
+            let store_disk = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
             for data in &file.data {
                 let part_name = hex::encode(data.id.to_be_bytes());
                 let part_name = format!("{part_name:0>32}");
-                let part_path = store_path.join(part_name).ok_or(Error::CannotParseError)?;
+                let part_path = store_disk.join(part_name).ok_or(Error::CannotParseError)?;
                 let cipher = fs::read(part_path.path).map_err(|_| Error::CannotReadFileError)?;
                 let content = crypto::decrypt(cipher.as_slice(), &data.key, &data.iv);
                 let content = content.map_err(|_| Error::CannotDecryptFileError)?;
@@ -433,8 +425,8 @@ impl Store {
     pub fn remove(&mut self, path: &str) -> Result<(), Error> {
         let path: String = path.into();
 
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
-        let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
+        let store_folder = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -463,8 +455,8 @@ impl Store {
     pub fn mv(&mut self, src: &str, dst: &str) -> Result<(), Error> {
         let src: String = src.into();
         let dst: String = dst.into();
-        let src = Path::new(&src).ok_or(Error::CannotParseError)?;
-        let dst = Path::new(&dst).ok_or(Error::CannotParseError)?;
+        let src = VirtualPath::new(&src).ok_or(Error::CannotParseError)?;
+        let dst = VirtualPath::new(&dst).ok_or(Error::CannotParseError)?;
 
         let src_id = self
             .fs
@@ -490,7 +482,7 @@ impl Store {
         }
 
         let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         if path.path != "/" {
             let id = self
@@ -515,7 +507,7 @@ impl Store {
     /// * `path` - Path of the file to be truncated.
     pub fn truncate(&mut self, path: &str) -> Result<(), Error> {
         let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -538,7 +530,7 @@ impl Store {
         let key: String = key.into();
         let value: String = value.into();
 
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -559,7 +551,7 @@ impl Store {
         let path: String = path.into();
         let key: String = key.into();
 
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -584,7 +576,7 @@ impl Store {
         let path: String = path.into();
         let key: String = key.into();
 
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -604,7 +596,7 @@ impl Store {
     /// * The metadata HashMap
     pub fn metadata_list(&self, path: &str) -> Result<HashMap<String, String>, Error> {
         let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -623,7 +615,7 @@ impl Store {
     /// * `tag` - Name of the tag to add.
     pub fn tag_add(&mut self, path: &str, tag: &str) -> Result<(), Error> {
         let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -642,7 +634,7 @@ impl Store {
     /// * `tag` - Tag to remove.
     pub fn tag_rm(&mut self, path: &str, tag: &str) -> Result<(), Error> {
         let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -660,7 +652,7 @@ impl Store {
     /// * `id` - Node's id.
     pub fn tag_clear(&mut self, path: &str) -> Result<(), Error> {
         let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -691,7 +683,7 @@ impl Store {
     /// * A list of all tags found in the filesystem.
     pub fn tag_get(&self, path: &str) -> Result<Vec<String>, Error> {
         let path: String = path.into();
-        let path = Path::new(&path).ok_or(Error::CannotParseError)?;
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
 
         let id = self
             .fs
@@ -728,7 +720,7 @@ impl Store {
     ///
     /// * The number of orphaned files removed.
     pub fn gc(&self) -> Result<usize, Error> {
-        let store_folder = Path::new(&self.path).ok_or(Error::CannotParseError)?;
+        let store_folder = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
 
         let referenced: std::collections::HashSet<String> = self
             .fs
