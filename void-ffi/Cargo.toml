@@ -1,0 +1,12 @@
+[package]
+name = "void-ffi"
+version = "1.0.0"
+edition = "2021"
+
+[lib]
+# cdylib  — the shared library consumed by other languages
+# rlib    — needed for Rust integration tests in tests/
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+void = { path = "../void" }

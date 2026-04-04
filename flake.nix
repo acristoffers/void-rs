@@ -44,7 +44,7 @@
           default = void-cli;
         };
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox fzf ];
+          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox fzf gcc ];
           inherit buildInputs;
         };
       }

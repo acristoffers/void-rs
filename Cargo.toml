@@ -4,6 +4,7 @@ members = [
     "void",
     "void-cli",
     "void-gui",
+    "void-ffi",
     "tests",
 ]
 

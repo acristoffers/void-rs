@@ -4,7 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::filesystem::{Data, File, Filesystem};
+use crate::filesystem::{Data, Filesystem};
+pub use crate::filesystem::File;
 
 use super::crypto;
 pub use super::path::{EasyPath, RealPath, VirtualPath};

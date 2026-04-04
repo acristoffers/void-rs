@@ -1697,6 +1697,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "void-ffi"
+version = "1.0.0"
+dependencies = [
+ "void",
+]
+
+[[package]]
 name = "void-gui"
 version = "1.0.0"
 dependencies = [
