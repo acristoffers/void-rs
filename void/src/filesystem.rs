@@ -89,12 +89,12 @@ impl Filesystem {
         }
     }
 
-    /// Checks if a path exists in the filesystem
+    /// Returns the id of the node at `path`, or `None` if it does not exist.
     ///
     /// # Arguments
     ///
     /// * `path` - Path to be checked.
-    pub fn exists(&self, path: &str) -> Result<bool, Error> {
+    pub fn exists(&self, path: &str) -> Result<Option<u64>, Error> {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
         let mut node_id: u64 = 0;
@@ -112,10 +112,10 @@ impl Filesystem {
                 .find(|node| node.name == component)
             {
                 Some(node) => node_id = node.id,
-                None => return Ok(false),
+                None => return Ok(None),
             }
         }
-        Ok(true)
+        Ok(Some(node_id))
     }
 
     /// Creates a folder or folder tree.
@@ -514,7 +514,7 @@ impl Filesystem {
     /// # Returns
     ///
     /// * The value associated with such key.
-    pub fn get_metadata(&mut self, id: u64, key: &str) -> Result<String, Error> {
+    pub fn get_metadata(&self, id: u64, key: &str) -> Result<String, Error> {
         let node = self
             .nodes
             .iter()
@@ -791,17 +791,17 @@ mod tests {
         fs.graph.insert("0".into(), vec![1]);
         fs.graph.insert("1".into(), vec![2]);
         fs.graph.insert("2".into(), vec![3]);
-        assert_eq!(fs.exists("/f1/f2/f3").unwrap(), true);
-        assert_eq!(fs.exists("/f1/f3/f2").unwrap(), false);
+        assert_eq!(fs.exists("/f1/f2/f3").unwrap(), Some(3));
+        assert_eq!(fs.exists("/f1/f3/f2").unwrap(), None);
     }
 
     #[test]
     fn test_filesystem_mkdirp() {
         let mut fs = Filesystem::new();
         fs.mkdirp("/f1/f2/f3").unwrap();
-        assert_eq!(fs.exists("/f1/f2/f3").unwrap(), true);
+        assert!(fs.exists("/f1/f2/f3").unwrap().is_some());
         fs.mkdirp("/f1/f2/f3/f4").unwrap();
-        assert_eq!(fs.exists("/f1/f2/f3/f4").unwrap(), true);
+        assert!(fs.exists("/f1/f2/f3/f4").unwrap().is_some());
         fs.nodes.push(Node {
             id: 10,
             name: "f5".into(),
@@ -820,7 +820,7 @@ mod tests {
         let mut fs = Filesystem::new();
         let id = fs.touch("/a/b/c").unwrap();
         assert_eq!(id, 3);
-        assert_eq!(fs.exists("/a/b/c").unwrap(), true);
+        assert!(fs.exists("/a/b/c").unwrap().is_some());
         let id = fs.touch("/a/b/c").unwrap();
         assert_eq!(id, 3);
         assert_eq!(fs.touch("/a/b/c/d"), Err(Error::CannotCreateDirectoryError));
