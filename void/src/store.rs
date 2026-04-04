@@ -4,8 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use crate::filesystem::{Data, Filesystem};
 pub use crate::filesystem::File;
+use crate::filesystem::{Data, Filesystem};
 
 use super::crypto;
 pub use super::path::{EasyPath, RealPath, VirtualPath};
@@ -34,6 +34,7 @@ pub enum Error {
     NoSuchMetadataKey,
     InternalStructureError,
     KeyDerivationError,
+    UnsupportedVersionError,
 }
 
 impl Display for Error {
@@ -52,8 +53,11 @@ fn deserialize<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, Error>
     bincode::deserialize(bytes).map_err(|_| Error::CannotDeserializeError)
 }
 
+const STORE_VERSION: u32 = 1;
+
 #[derive(Serialize, Deserialize)]
 struct StoreFile {
+    version: u32,
     fs: Vec<u8>,
     fs_hash: [u8; 32],
     iv: [u8; 16],
@@ -95,6 +99,7 @@ impl Store {
         fs_hash.copy_from_slice(&fs_hash_vec);
 
         let store_file = StoreFile {
+            version: STORE_VERSION,
             fs,
             fs_hash,
             iv,
@@ -173,6 +178,10 @@ impl Store {
 
         let bytes = fs::read(store_journal.path).map_err(|_| Error::CannotReadFileError)?;
         let store_file: StoreFile = deserialize(bytes.as_slice())?;
+
+        if store_file.version != STORE_VERSION {
+            return Err(Error::UnsupportedVersionError);
+        }
 
         let salt = store_file.salt;
         let iv = store_file.iv;

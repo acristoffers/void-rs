@@ -43,6 +43,7 @@ pub const VOID_ERR_STORE_FILE_ALREADY_EXISTS: i32 = 14;
 pub const VOID_ERR_NO_SUCH_METADATA_KEY: i32 = 15;
 pub const VOID_ERR_INTERNAL_STRUCTURE: i32 = 16;
 pub const VOID_ERR_KEY_DERIVATION: i32 = 17;
+pub const VOID_ERR_UNSUPPORTED_VERSION: i32 = 18;
 
 fn map_err(e: Error) -> i32 {
     match e {
@@ -63,6 +64,7 @@ fn map_err(e: Error) -> i32 {
         Error::NoSuchMetadataKey => VOID_ERR_NO_SUCH_METADATA_KEY,
         Error::InternalStructureError => VOID_ERR_INTERNAL_STRUCTURE,
         Error::KeyDerivationError => VOID_ERR_KEY_DERIVATION,
+        Error::UnsupportedVersionError => VOID_ERR_UNSUPPORTED_VERSION,
     }
 }
 
