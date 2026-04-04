@@ -8,7 +8,6 @@ use crate::filesystem::{Data, File, Filesystem};
 
 use super::crypto;
 pub use super::path::{EasyPath, Path};
-use flexbuffers::{FlexbufferSerializer, Reader};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -44,9 +43,12 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
-trait FlexBufferSerializable {
-    fn fb_serialize(&self) -> Result<Vec<u8>, Error>;
-    fn fb_deserialize(bytes: &[u8]) -> Result<Box<Self>, Error>;
+fn serialize<T: Serialize>(value: &T) -> Result<Vec<u8>, Error> {
+    bincode::serialize(value).map_err(|_| Error::CannotSerializeError)
+}
+
+fn deserialize<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
+    bincode::deserialize(bytes).map_err(|_| Error::CannotDeserializeError)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -55,51 +57,6 @@ struct StoreFile {
     fs_hash: [u8; 32],
     iv: [u8; 16],
     salt: [u8; 16],
-}
-
-impl FlexBufferSerializable for StoreFile {
-    fn fb_serialize(&self) -> Result<Vec<u8>, Error> {
-        let mut bytes = FlexbufferSerializer::new();
-
-        match self.serialize(&mut bytes) {
-            Ok(_) => Ok(bytes.view().into()),
-            Err(_) => Err(Error::CannotSerializeError),
-        }
-    }
-
-    fn fb_deserialize(bytes: &[u8]) -> Result<Box<Self>, Error> {
-        let reader = match Reader::get_root(bytes) {
-            Ok(reader) => reader,
-            Err(_) => return Err(Error::CannotDeserializeError),
-        };
-
-        match StoreFile::deserialize(reader) {
-            Ok(store) => Ok(Box::new(store)),
-            Err(_) => Err(Error::CannotDeserializeError),
-        }
-    }
-}
-
-impl FlexBufferSerializable for Filesystem {
-    fn fb_serialize(&self) -> Result<Vec<u8>, Error> {
-        let mut bytes = FlexbufferSerializer::new();
-        match self.serialize(&mut bytes) {
-            Ok(_) => Ok(bytes.view().into()),
-            Err(_) => Err(Error::CannotSerializeError),
-        }
-    }
-
-    fn fb_deserialize(bytes: &[u8]) -> Result<Box<Self>, Error> {
-        let reader = match Reader::get_root(bytes) {
-            Ok(reader) => reader,
-            Err(_) => return Err(Error::CannotDeserializeError),
-        };
-
-        match Filesystem::deserialize(reader) {
-            Ok(fs) => Ok(Box::new(fs)),
-            Err(_) => Err(Error::CannotDeserializeError),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -127,8 +84,7 @@ impl Store {
             return Err(Error::FileDoesNotExistError);
         }
 
-        self.fs.sort();
-        let fs_bytes = self.fs.fb_serialize()?;
+        let fs_bytes = serialize(&self.fs)?;
 
         let iv = crypto::uuid(); // fresh nonce on every save
         let fs = crypto::encrypt(fs_bytes.as_slice(), &self.key, &iv)?;
@@ -144,7 +100,7 @@ impl Store {
             salt: self.salt,
         };
 
-        let serialized = store_file.fb_serialize()?;
+        let serialized = serialize(&store_file)?;
 
         match fs::write(store_journal.path, serialized.as_slice()) {
             Ok(_) => Ok(()),
@@ -215,7 +171,7 @@ impl Store {
         }
 
         let bytes = fs::read(store_journal.path).map_err(|_| Error::CannotReadFileError)?;
-        let store_file = StoreFile::fb_deserialize(bytes.as_slice())?;
+        let store_file: StoreFile = deserialize(bytes.as_slice())?;
 
         let salt = store_file.salt;
         let iv = store_file.iv;
@@ -230,10 +186,10 @@ impl Store {
         let fs = store_file.fs.as_slice();
         let fs = crypto::decrypt(fs, &key, &iv);
         let fs = fs.map_err(|_| Error::CannotDecryptFileError)?;
-        let fs = Filesystem::fb_deserialize(fs.as_slice())?;
+        let fs: Filesystem = deserialize(fs.as_slice())?;
 
         let store = Store {
-            fs: *fs,
+            fs,
             key,
             path: store_folder.path,
             salt,

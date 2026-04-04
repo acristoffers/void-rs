@@ -30,10 +30,9 @@ pub struct Data {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Filesystem {
-    data: Vec<Data>,
-    nodes: Vec<Node>,
-    // The String key is a requriment from Serde ¬¬
-    graph: HashMap<String, Vec<u64>>,
+    data: HashMap<u64, Data>,
+    nodes: HashMap<u64, Node>,
+    graph: HashMap<u64, Vec<u64>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -51,8 +50,8 @@ impl Filesystem {
     /// Creates a new, empty filesystem
     pub fn new() -> Filesystem {
         Filesystem {
-            data: vec![],
-            nodes: vec![],
+            data: HashMap::new(),
+            nodes: HashMap::new(),
             graph: HashMap::new(),
         }
     }
@@ -62,8 +61,8 @@ impl Filesystem {
         let len = self.nodes.len() as u64;
         match self
             .nodes
-            .iter()
-            .map(|node| node.id)
+            .keys()
+            .copied()
             .sorted()
             .zip(1..=len)
             .find(|(id, index)| id != index)
@@ -78,8 +77,8 @@ impl Filesystem {
         let len = self.data.len() as u64;
         match self
             .data
-            .iter()
-            .map(|data| data.id)
+            .keys()
+            .copied()
             .sorted()
             .zip(1..=len)
             .find(|(id, index)| id != index)
@@ -105,10 +104,10 @@ impl Filesystem {
             }
             match self
                 .graph
-                .get(&node_id.to_string())
+                .get(&node_id)
                 .unwrap_or(&default)
                 .iter()
-                .filter_map(|&id| self.nodes.iter().find(|node| node.id == id))
+                .filter_map(|&id| self.nodes.get(&id))
                 .find(|node| node.name == component)
             {
                 Some(node) => node_id = node.id,
@@ -132,43 +131,39 @@ impl Filesystem {
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
         let mut node_id: u64 = 0;
-        let default: Vec<u64> = vec![];
         for component in path.components() {
             if component == "/" {
                 continue;
             }
-            match self
-                .graph
-                .get(&node_id.to_string())
-                .unwrap_or(&default)
+            let children = self.graph.get(&node_id).cloned().unwrap_or_default();
+            let found = children
                 .iter()
-                .filter_map(|&id| self.nodes.iter().find(|node| node.id == id))
+                .filter_map(|&id| self.nodes.get(&id))
                 .find(|node| node.name == component)
-            {
-                Some(node) => {
-                    if node.is_file {
+                .map(|node| (node.id, node.is_file));
+            match found {
+                Some((id, is_file)) => {
+                    if is_file {
                         return Err(Error::CannotCreateDirectoryError);
                     }
-                    node_id = node.id;
+                    node_id = id;
                 }
-
                 None => {
-                    let node = Node {
-                        id: self.next_node_id(),
+                    let new_id = self.next_node_id();
+                    let mut new_entry = children;
+                    new_entry.push(new_id);
+                    new_entry.sort();
+                    self.graph.insert(node_id, new_entry);
+                    self.nodes.insert(new_id, Node {
+                        id: new_id,
                         name: component,
                         size: 0,
                         is_file: false,
                         metadata: HashMap::new(),
                         data: vec![],
                         tags: vec![],
-                    };
-                    let parent_children = self.graph.get(&node_id.to_string()).unwrap_or(&default);
-                    let mut new_entry = vec![node.id];
-                    new_entry.extend(parent_children);
-                    new_entry.sort();
-                    self.graph.insert(node_id.to_string(), new_entry);
-                    node_id = node.id;
-                    self.nodes.push(node);
+                    });
+                    node_id = new_id;
                 }
             }
         }
@@ -192,31 +187,30 @@ impl Filesystem {
         }
         let path: String = path.into();
         let path = Path::new(&path).ok_or(Error::CannotParseError)?;
-        let default = vec![];
         let parent_id = self.mkdirp(&path.parent)?;
-        let children = self.graph.get(&parent_id.to_string()).unwrap_or(&default);
-        match self
-            .nodes
+        let children = self.graph.get(&parent_id).cloned().unwrap_or_default();
+        let found = children
             .iter()
-            .find(|node| node.name == path.name && children.contains(&node.id))
-        {
-            Some(node) => Ok(node.id),
+            .filter_map(|&id| self.nodes.get(&id))
+            .find(|node| node.name == path.name)
+            .map(|node| node.id);
+        match found {
+            Some(id) => Ok(id),
             None => {
-                let node = Node {
-                    id: self.next_node_id(),
+                let new_id = self.next_node_id();
+                let mut new_children = vec![new_id];
+                new_children.extend(&children);
+                self.graph.insert(parent_id, new_children);
+                self.nodes.insert(new_id, Node {
+                    id: new_id,
                     name: path.name,
                     size: 0,
                     is_file: true,
                     metadata: HashMap::new(),
                     data: vec![],
                     tags: vec![],
-                };
-                let mut new_children = vec![node.id];
-                new_children.extend(children);
-                self.graph.insert(parent_id.to_string(), new_children);
-                let node_id = node.id;
-                self.nodes.push(node);
-                Ok(node_id)
+                });
+                Ok(new_id)
             }
         }
     }
@@ -242,11 +236,7 @@ impl Filesystem {
                 tags: vec![],
             });
         }
-        let node = self
-            .nodes
-            .iter()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
+        let node = self.nodes.get(&id).ok_or(Error::FileDoesNotExistError)?;
         let file = File {
             id: node.id,
             name: node.name.clone(),
@@ -254,12 +244,7 @@ impl Filesystem {
             is_file: node.is_file,
             metadata: node.metadata.clone(),
             tags: node.tags.clone(),
-            data: self
-                .data
-                .iter()
-                .filter(|data| node.data.contains(&data.id))
-                .cloned()
-                .collect(),
+            data: node.data.iter().filter_map(|id| self.data.get(id)).cloned().collect(),
         };
         Ok(file)
     }
@@ -271,11 +256,10 @@ impl Filesystem {
     /// * `id` - Id of the file to change size.
     /// * `size` - New size.
     pub fn set_size(&mut self, id: u64, size: u64) -> Result<(), Error> {
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id && node.is_file)
-            .ok_or(Error::InternalStructureError)?;
+        let node = self.nodes.get_mut(&id).ok_or(Error::InternalStructureError)?;
+        if !node.is_file {
+            return Err(Error::InternalStructureError);
+        }
         node.size = size;
         Ok(())
     }
@@ -290,11 +274,11 @@ impl Filesystem {
     ///
     /// * List of children's File structures.
     pub fn ls(&self, id: u64) -> Result<Vec<File>, Error> {
-        let default = vec![];
         let children = self
             .graph
-            .get(&id.to_string())
-            .unwrap_or(&default)
+            .get(&id)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
             .iter()
             .filter_map(|&id| self.get(id).ok())
             .collect();
@@ -308,46 +292,32 @@ impl Filesystem {
     /// * `id` - Id of the node to move;
     /// * `parent` - Id of the new parent;
     pub fn mv(&mut self, id: u64, parent: u64) -> Result<(), Error> {
-        // Validate source and capture needed ids before any mutations.
-        let node_id = self
-            .nodes
-            .iter()
-            .find(|node| node.id == id)
-            .map(|node| node.id)
-            .ok_or(Error::FileDoesNotExistError)?;
-        let new_parent_id = self
-            .nodes
-            .iter()
-            .find(|node| node.id == parent)
-            .map(|node| node.id)
-            .ok_or(Error::FolderDoesNotExistError)?;
+        if !self.nodes.contains_key(&id) {
+            return Err(Error::FileDoesNotExistError);
+        }
+        if parent != 0 && !self.nodes.contains_key(&parent) {
+            return Err(Error::FolderDoesNotExistError);
+        }
         let old_parent = self
             .graph
             .iter()
-            .find(|(_, value)| value.contains(&id))
-            .map(|(key, _)| key.clone())
+            .find(|(_, v)| v.contains(&id))
+            .map(|(&k, _)| k)
             .ok_or(Error::InternalStructureError)?;
 
-        // Remove node from old parent.
         let old_children: Vec<u64> = self
             .graph
             .get(&old_parent)
             .ok_or(Error::InternalStructureError)?
             .iter()
-            .filter(|&&child_id| child_id != node_id)
+            .filter(|&&cid| cid != id)
             .copied()
             .collect();
         self.graph.insert(old_parent, old_children);
 
-        // Append node to new parent's existing children.
-        let existing: Vec<u64> = self
-            .graph
-            .get(&new_parent_id.to_string())
-            .cloned()
-            .unwrap_or_default();
-        let mut new_children = vec![id];
-        new_children.extend(existing);
-        self.graph.insert(new_parent_id.to_string(), new_children);
+        let mut new_children: Vec<u64> = self.graph.get(&parent).cloned().unwrap_or_default();
+        new_children.push(id);
+        self.graph.insert(parent, new_children);
         Ok(())
     }
 
@@ -362,7 +332,7 @@ impl Filesystem {
     /// * A vector of Data objects that were removed.
     pub fn rm(&mut self, id: u64) -> Result<Vec<Data>, Error> {
         if id == 0 {
-            let data = self.data.clone();
+            let data = self.data.values().cloned().collect();
             self.graph.clear();
             self.nodes.clear();
             self.data.clear();
@@ -371,8 +341,8 @@ impl Filesystem {
         let parent = self
             .graph
             .iter()
-            .find(|(_, value)| value.contains(&id))
-            .map(|(key, _)| key.clone())
+            .find(|(_, v)| v.contains(&id))
+            .map(|(&k, _)| k)
             .ok_or(Error::InternalStructureError)?;
         let default = vec![];
         let children: Vec<u64> = self
@@ -380,8 +350,8 @@ impl Filesystem {
             .get(&parent)
             .unwrap_or(&default)
             .iter()
-            .filter(|&&child_id| child_id != id)
-            .cloned()
+            .filter(|&&cid| cid != id)
+            .copied()
             .collect();
         self.graph.insert(parent, children);
         self.clean()
@@ -389,42 +359,31 @@ impl Filesystem {
 
     /// Removes unreferenced data and nodes. Does not change ids.
     pub fn clean(&mut self) -> Result<Vec<Data>, Error> {
-        // Removes not referenced keys.
         let mut size = 0;
         while self.graph.len() != size {
             size = self.graph.len();
-            let keys: Vec<u64> = self
-                .graph
-                .keys()
-                .filter_map(|k| k.parse::<u64>().ok())
-                .collect();
+            let keys: Vec<u64> = self.graph.keys().copied().collect();
             let vals: Vec<u64> = self.graph.values().flat_map(|v| v.clone()).collect();
             for key in keys {
                 if !vals.contains(&key) && key != 0 {
-                    self.graph.remove(&key.to_string());
+                    self.graph.remove(&key);
                 }
             }
         }
-        // Gets the ids of all referenced nodes.
-        let keep: Vec<&u64> = self.graph.values().flatten().collect();
-        // Turns ids into Node objects.
-        self.nodes.retain(|node| keep.contains(&&node.id));
-        // Gets the ids of all referenced data.
+        let keep: Vec<u64> = self.graph.values().flatten().copied().collect();
+        self.nodes.retain(|id, _| keep.contains(id));
         let data_keep: Vec<u64> = self
             .nodes
-            .iter()
+            .values()
             .flat_map(|node| node.data.clone())
             .collect();
-        // Gets all Data objects in the filesystem but not referenced.
         let removed_data: Vec<Data> = self
             .data
-            .iter()
+            .values()
             .filter(|data| !data_keep.contains(&data.id))
             .cloned()
             .collect();
-        // Removes unused data
-        self.data.retain(|data| data_keep.contains(&data.id));
-        // Returns the list of removed Data, to facilitate external cleanup.
+        self.data.retain(|id, _| data_keep.contains(id));
         Ok(removed_data)
     }
 
@@ -440,23 +399,15 @@ impl Filesystem {
     /// * The File with the new Data added.
     pub fn append(&mut self, id: u64, data: &Data) -> Result<File, Error> {
         let next_id = self.next_data_id();
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
-
-        if !node.is_file {
-            return Err(Error::FileDoesNotExistError);
+        {
+            let node = self.nodes.get_mut(&id).ok_or(Error::FileDoesNotExistError)?;
+            if !node.is_file {
+                return Err(Error::FileDoesNotExistError);
+            }
+            node.data.push(next_id);
         }
-
-        let data = Data {
-            id: next_id,
-            ..*data
-        };
-
-        node.data.push(data.id);
-        self.data.push(data);
+        let data = Data { id: next_id, ..*data };
+        self.data.insert(data.id, data);
         self.get(id)
     }
 
@@ -466,25 +417,15 @@ impl Filesystem {
     ///
     /// * `id` - Id of the file to truncate
     pub fn truncate(&mut self, id: u64) -> Result<(), Error> {
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
-
-        if !node.is_file {
-            return Err(Error::FileDoesNotExistError);
-        }
-
-        self.data.retain(|data| !node.data.contains(&data.id));
-        node.data.clear();
+        let data_ids: Vec<u64> = {
+            let node = self.nodes.get_mut(&id).ok_or(Error::FileDoesNotExistError)?;
+            if !node.is_file {
+                return Err(Error::FileDoesNotExistError);
+            }
+            node.data.drain(..).collect()
+        };
+        self.data.retain(|id, _| !data_ids.contains(id));
         Ok(())
-    }
-
-    /// Sorts nodes and data id.
-    pub fn sort(&mut self) {
-        self.nodes.sort_by_key(|node| node.id);
-        self.data.sort_by_key(|data| data.id);
     }
 
     /// Sets file/folder metadata
@@ -495,11 +436,7 @@ impl Filesystem {
     /// * `key` - metadata key;
     /// * `value` - metadata value;
     pub fn set_metadata(&mut self, id: u64, key: &str, value: &str) -> Result<(), Error> {
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
+        let node = self.nodes.get_mut(&id).ok_or(Error::FileDoesNotExistError)?;
         node.metadata.insert(key.into(), value.into());
         Ok(())
     }
@@ -515,11 +452,7 @@ impl Filesystem {
     ///
     /// * The value associated with such key.
     pub fn get_metadata(&self, id: u64, key: &str) -> Result<String, Error> {
-        let node = self
-            .nodes
-            .iter()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
+        let node = self.nodes.get(&id).ok_or(Error::FileDoesNotExistError)?;
         let key: String = key.into();
         match node.metadata.get(&key) {
             Some(value) => Ok(value.clone()),
@@ -534,11 +467,7 @@ impl Filesystem {
     /// * `id` - Id of the affected node;
     /// * `key` - Metadata key;
     pub fn rm_metadata(&mut self, id: u64, key: &str) -> Result<(), Error> {
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
+        let node = self.nodes.get_mut(&id).ok_or(Error::FileDoesNotExistError)?;
         match node.metadata.remove(key) {
             Some(_) => Ok(()),
             None => Err(Error::NoSuchMetadataKey),
@@ -558,20 +487,18 @@ impl Filesystem {
         let mut node_id = id;
         let mut path = vec![id];
         while node_id != 0 {
-            let (key, _) = self
+            let (&parent_id, _) = self
                 .graph
                 .iter()
                 .find(|(_, v)| v.contains(&node_id))
                 .ok_or(Error::FileDoesNotExistError)?;
-            node_id = key
-                .parse::<u64>()
-                .map_err(|_| Error::InternalStructureError)?;
+            node_id = parent_id;
             path.push(node_id);
         }
         let path: Vec<String> = path
             .iter()
             .rev()
-            .filter_map(|&id| self.nodes.iter().find(|node| node.id == id))
+            .filter_map(|&id| self.nodes.get(&id))
             .map(|node| node.name.clone())
             .collect();
         let path: String = "/".to_string() + &path.join("/");
@@ -587,8 +514,8 @@ impl Filesystem {
     pub fn ls_all(&self) -> Result<Vec<File>, Error> {
         let nodes = self
             .nodes
-            .iter()
-            .filter_map(|node| self.get(node.id).ok())
+            .keys()
+            .filter_map(|&id| self.get(id).ok())
             .map(|file| File {
                 name: self.path(file.id).unwrap(),
                 ..file
@@ -605,11 +532,7 @@ impl Filesystem {
     /// * `tag` - Name of the tag to add.
     pub fn add_tag(&mut self, id: u64, tag: &str) -> Result<(), Error> {
         let tag: String = tag.into();
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
+        let node = self.nodes.get_mut(&id).ok_or(Error::FileDoesNotExistError)?;
         if !node.tags.contains(&tag) {
             node.tags.push(tag);
         }
@@ -624,11 +547,7 @@ impl Filesystem {
     /// * `tag` - Tag to remove.
     pub fn rm_tag(&mut self, id: u64, tag: &str) -> Result<(), Error> {
         let tag: String = tag.into();
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
+        let node = self.nodes.get_mut(&id).ok_or(Error::FileDoesNotExistError)?;
         node.tags.retain(|t| t != &tag);
         Ok(())
     }
@@ -639,18 +558,14 @@ impl Filesystem {
     ///
     /// * `id` - Node's id.
     pub fn clear_tag(&mut self, id: u64) -> Result<(), Error> {
-        let node = self
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == id)
-            .ok_or(Error::FileDoesNotExistError)?;
+        let node = self.nodes.get_mut(&id).ok_or(Error::FileDoesNotExistError)?;
         node.tags.clear();
         Ok(())
     }
 
     /// Returns the set of all data IDs currently referenced in the store.
     pub fn data_ids(&self) -> std::collections::HashSet<u64> {
-        self.data.iter().map(|d| d.id).collect()
+        self.data.keys().copied().collect()
     }
 
     /// List all tags in the filesystem.
@@ -660,7 +575,7 @@ impl Filesystem {
     /// * A list of all tags found in the filesystem.
     pub fn list_tag(&self) -> Vec<String> {
         self.nodes
-            .iter()
+            .values()
             .flat_map(|node| node.tags.clone())
             .unique()
             .collect()
@@ -682,7 +597,7 @@ impl Filesystem {
             tags.iter().cloned().partition(|tag| !tag.starts_with('!'));
         let exclude: Vec<String> = exclude.iter().map(|tag| tag.replace('!', "")).collect();
         self.nodes
-            .iter()
+            .values()
             .filter(|node| {
                 node.tags.iter().filter(|tag| include.contains(tag)).count() == include.len()
             })
@@ -705,7 +620,7 @@ mod tests {
     fn test_filesystem_next_node_id() {
         let mut fs = Filesystem::new();
         assert_eq!(fs.next_node_id(), 1);
-        fs.nodes.push(Node {
+        fs.nodes.insert(1, Node {
             id: 1,
             name: "".into(),
             size: 0,
@@ -715,7 +630,7 @@ mod tests {
             tags: vec![],
         });
         assert_eq!(fs.next_node_id(), 2);
-        fs.nodes.push(Node {
+        fs.nodes.insert(2, Node {
             id: 2,
             name: "".into(),
             size: 0,
@@ -725,7 +640,7 @@ mod tests {
             tags: vec![],
         });
         assert_eq!(fs.next_node_id(), 3);
-        fs.nodes.push(Node {
+        fs.nodes.insert(5, Node {
             id: 5,
             name: "".into(),
             size: 0,
@@ -743,19 +658,19 @@ mod tests {
         let key = crypto::random_key();
         let mut fs = Filesystem::new();
         assert_eq!(fs.next_data_id(), 1);
-        fs.data.push(Data {
+        fs.data.insert(1, Data {
             id: 1,
             key,
             iv: rand,
         });
         assert_eq!(fs.next_data_id(), 2);
-        fs.data.push(Data {
+        fs.data.insert(2, Data {
             id: 2,
             key,
             iv: rand,
         });
         assert_eq!(fs.next_data_id(), 3);
-        fs.data.push(Data {
+        fs.data.insert(5, Data {
             id: 5,
             key,
             iv: rand,
@@ -766,7 +681,7 @@ mod tests {
     #[test]
     fn test_filesystem_exists() {
         let mut fs = Filesystem::new();
-        fs.nodes.push(Node {
+        fs.nodes.insert(1, Node {
             id: 1,
             name: "f1".into(),
             size: 0,
@@ -775,7 +690,7 @@ mod tests {
             data: vec![],
             tags: vec![],
         });
-        fs.nodes.push(Node {
+        fs.nodes.insert(2, Node {
             id: 2,
             name: "f2".into(),
             size: 0,
@@ -784,7 +699,7 @@ mod tests {
             data: vec![],
             tags: vec![],
         });
-        fs.nodes.push(Node {
+        fs.nodes.insert(3, Node {
             id: 3,
             name: "f3".into(),
             size: 0,
@@ -793,9 +708,9 @@ mod tests {
             data: vec![],
             tags: vec![],
         });
-        fs.graph.insert("0".into(), vec![1]);
-        fs.graph.insert("1".into(), vec![2]);
-        fs.graph.insert("2".into(), vec![3]);
+        fs.graph.insert(0, vec![1]);
+        fs.graph.insert(1, vec![2]);
+        fs.graph.insert(2, vec![3]);
         assert_eq!(fs.exists("/f1/f2/f3").unwrap(), Some(3));
         assert_eq!(fs.exists("/f1/f3/f2").unwrap(), None);
     }
@@ -807,7 +722,7 @@ mod tests {
         assert!(fs.exists("/f1/f2/f3").unwrap().is_some());
         fs.mkdirp("/f1/f2/f3/f4").unwrap();
         assert!(fs.exists("/f1/f2/f3/f4").unwrap().is_some());
-        fs.nodes.push(Node {
+        fs.nodes.insert(10, Node {
             id: 10,
             name: "f5".into(),
             size: 0,
@@ -816,7 +731,7 @@ mod tests {
             data: vec![],
             tags: vec![],
         });
-        fs.graph.insert("0".into(), vec![1, 10]);
+        fs.graph.insert(0, vec![1, 10]);
         assert_eq!(fs.mkdirp("/f5/f6"), Err(Error::CannotCreateDirectoryError));
     }
 
@@ -829,7 +744,7 @@ mod tests {
         let id = fs.touch("/a/b/c").unwrap();
         assert_eq!(id, 3);
         assert_eq!(fs.touch("/a/b/c/d"), Err(Error::CannotCreateDirectoryError));
-        let node = fs.nodes.iter().find(|node| node.id == id).unwrap();
+        let node = fs.nodes.get(&id).unwrap();
         assert!(node.is_file)
     }
 
@@ -937,8 +852,8 @@ mod tests {
         };
         fs.append(id, &data).unwrap();
         fs.graph = HashMap::new();
-        fs.graph.insert("0".into(), vec![1]);
-        fs.graph.insert("1".into(), vec![2]);
+        fs.graph.insert(0, vec![1]);
+        fs.graph.insert(1, vec![2]);
         fs.clean().unwrap();
         assert_eq!(fs.nodes.len(), 2);
         assert_eq!(fs.data.len(), 0);
