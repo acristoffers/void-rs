@@ -12,8 +12,8 @@
         inherit (gitignore.lib) gitignoreSource;
         version = "1.0.0";
         pkgs = (import nixpkgs) { inherit system; };
-        nativeBuildInputs = with pkgs; [ cmake pkg-config rustc cargo stdenv glib ];
-        buildInputs = with pkgs; [ libadwaita librsvg makeWrapper ];
+        nativeBuildInputs = with pkgs; [ cmake pkg-config rustc cargo stdenv glib llvmPackages.libclang ];
+        buildInputs = with pkgs; [ libadwaita librsvg ffmpeg makeWrapper ];
         mkPackage = { name }: pkgs.rustPlatform.buildRustPackage rec {
           cargoBuildFlags = [ "--package ${name}" ];
           cargoTestFlags = cargoBuildFlags;
@@ -23,6 +23,8 @@
           inherit nativeBuildInputs;
           cargoLock.lockFile = ./Cargo.lock;
           src = gitignoreSource ./.;
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.glibc.dev}/include";
           postInstall = ''
             for dir in target/*/release/share; do
               cp -r $dir $out/share
@@ -45,7 +47,9 @@
         };
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox fzf gcc ];
-          inherit buildInputs;
+          buildInputs = buildInputs ++ [ pkgs.llvmPackages.libclang ];
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.glibc.dev}/include";
         };
       }
     );

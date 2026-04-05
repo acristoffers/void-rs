@@ -1,0 +1,130 @@
+# Brazilian Portuguese translations for void package.
+# Copyright (C) 2024 Álan Crístoffer e Sousa
+# This file is distributed under the same license as the void package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: void 1.0.0\n"
+"Report-Msgid-Bugs-To: acristoffers@startmail.com\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Brazilian Portuguese\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Settings"
+msgstr "Configurações"
+
+msgid "Keyboard Shortcuts"
+msgstr "Atalhos de teclado"
+
+msgid "Help"
+msgstr "Ajuda"
+
+msgid "About Void"
+msgstr "Sobre o Void"
+
+msgid "Open or create a vault"
+msgstr "Abrir ou criar um cofre"
+
+msgid "Open Vault"
+msgstr "Abrir cofre"
+
+msgid "Create Vault"
+msgstr "Criar cofre"
+
+msgid "Select Vault Location"
+msgstr "Selecionar localização do cofre"
+
+msgid "Location"
+msgstr "Localização"
+
+msgid "Password"
+msgstr "Senha"
+
+msgid "Not a Void Store"
+msgstr "Não é um cofre Void"
+
+msgid "The selected folder does not contain a Store.void file."
+msgstr "A pasta selecionada não contém um arquivo Store.void."
+
+msgid "Wrong Password"
+msgstr "Senha incorreta"
+
+msgid "The password is incorrect."
+msgstr "A senha está incorreta."
+
+msgid "Could Not Open Store"
+msgstr "Não foi possível abrir o cofre"
+
+msgid "Failed to open the store"
+msgstr "Falha ao abrir o cofre"
+
+msgid "Confirm Password"
+msgstr "Confirmar senha"
+
+msgid "Passwords do not match"
+msgstr "As senhas não coincidem"
+
+msgid "Folder Not Empty"
+msgstr "Pasta não vazia"
+
+msgid "The selected folder is not empty. Please choose an empty folder or a new location."
+msgstr "A pasta selecionada não está vazia. Por favor, escolha uma pasta vazia ou um novo local."
+
+msgid "Could Not Create Store"
+msgstr "Não foi possível criar o cofre"
+
+msgid "Failed to create the store"
+msgstr "Falha ao criar o cofre"
+
+msgid "An encrypted file store with a filesystem-like structure."
+msgstr "Um cofre de arquivos criptografado com uma estrutura semelhante a um sistema de arquivos."
+
+msgid "General"
+msgstr "Geral"
+
+msgid "Use System Theme"
+msgstr "Usar tema do sistema"
+
+msgid "System Theme"
+msgstr "Tema do sistema"
+
+msgid "Use Dark Theme"
+msgstr "Usar tema escuro"
+
+msgid "Dark Theme"
+msgstr "Tema escuro"
+
+msgid "Application Theme"
+msgstr "Tema do aplicativo"
+
+msgid "No Location Selected"
+msgstr "Nenhuma localização selecionada"
+
+msgid "Please select a vault location first."
+msgstr "Por favor, selecione uma localização de cofre primeiro."
+
+msgid "Cannot Read Folder"
+msgstr "Não foi possível ler a pasta"
+
+msgid "Could not read the selected folder"
+msgstr "Não foi possível ler a pasta selecionada"
+
+msgid "New Window"
+msgstr "Nova janela"
+
+msgid "Information"
+msgstr "Informações"
+
+msgid "A → Z"
+msgstr "A → Z"
+
+msgid "Z → A"
+msgstr "Z → A"
+
+msgid "Icon Size"
+msgstr "Tamanho dos ícones"

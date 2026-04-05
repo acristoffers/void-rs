@@ -6,7 +6,13 @@ edition = "2021"
 description = "Encrypted file store."
 
 [dependencies]
-libadwaita = "0.9.1"
+libadwaita = { version = "0.9.1", features = ["v1_5"] }
+gtk4 = { version = "0.11", features = ["v4_10"] }
+gettext-rs = "0.7"
+image = "0.25"
+ffmpeg-next = "8"
+regex = "1"
+walkdir = "2"
 void = { path = "../void" }
 
 [build-dependencies]

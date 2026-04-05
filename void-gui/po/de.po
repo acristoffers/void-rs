@@ -1,0 +1,130 @@
+# German translations for void package.
+# Copyright (C) 2024 Álan Crístoffer e Sousa
+# This file is distributed under the same license as the void package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: void 1.0.0\n"
+"Report-Msgid-Bugs-To: acristoffers@startmail.com\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Keyboard Shortcuts"
+msgstr "Tastenkürzel"
+
+msgid "Help"
+msgstr "Hilfe"
+
+msgid "About Void"
+msgstr "Über Void"
+
+msgid "Open or create a vault"
+msgstr "Tresor öffnen oder erstellen"
+
+msgid "Open Vault"
+msgstr "Tresor öffnen"
+
+msgid "Create Vault"
+msgstr "Tresor erstellen"
+
+msgid "Select Vault Location"
+msgstr "Tresor-Speicherort auswählen"
+
+msgid "Location"
+msgstr "Speicherort"
+
+msgid "Password"
+msgstr "Passwort"
+
+msgid "Not a Void Store"
+msgstr "Kein Void-Tresor"
+
+msgid "The selected folder does not contain a Store.void file."
+msgstr "Der ausgewählte Ordner enthält keine Store.void-Datei."
+
+msgid "Wrong Password"
+msgstr "Falsches Passwort"
+
+msgid "The password is incorrect."
+msgstr "Das Passwort ist falsch."
+
+msgid "Could Not Open Store"
+msgstr "Tresor konnte nicht geöffnet werden"
+
+msgid "Failed to open the store"
+msgstr "Fehler beim Öffnen des Tresors"
+
+msgid "Confirm Password"
+msgstr "Passwort bestätigen"
+
+msgid "Passwords do not match"
+msgstr "Passwörter stimmen nicht überein"
+
+msgid "Folder Not Empty"
+msgstr "Ordner nicht leer"
+
+msgid "The selected folder is not empty. Please choose an empty folder or a new location."
+msgstr "Der ausgewählte Ordner ist nicht leer. Bitte wählen Sie einen leeren Ordner oder einen neuen Speicherort."
+
+msgid "Could Not Create Store"
+msgstr "Tresor konnte nicht erstellt werden"
+
+msgid "Failed to create the store"
+msgstr "Fehler beim Erstellen des Tresors"
+
+msgid "An encrypted file store with a filesystem-like structure."
+msgstr "Ein verschlüsselter Dateispeicher mit einer dateisystemähnlichen Struktur."
+
+msgid "General"
+msgstr "Allgemein"
+
+msgid "Use System Theme"
+msgstr "Systemdesign verwenden"
+
+msgid "System Theme"
+msgstr "Systemdesign"
+
+msgid "Use Dark Theme"
+msgstr "Dunkles Design verwenden"
+
+msgid "Dark Theme"
+msgstr "Dunkles Design"
+
+msgid "Application Theme"
+msgstr "Anwendungsdesign"
+
+msgid "No Location Selected"
+msgstr "Kein Speicherort ausgewählt"
+
+msgid "Please select a vault location first."
+msgstr "Bitte wählen Sie zuerst einen Tresor-Speicherort aus."
+
+msgid "Cannot Read Folder"
+msgstr "Ordner kann nicht gelesen werden"
+
+msgid "Could not read the selected folder"
+msgstr "Der ausgewählte Ordner konnte nicht gelesen werden"
+
+msgid "New Window"
+msgstr "Neues Fenster"
+
+msgid "Information"
+msgstr "Informationen"
+
+msgid "A → Z"
+msgstr "A → Z"
+
+msgid "Z → A"
+msgstr "Z → A"
+
+msgid "Icon Size"
+msgstr "Symbolgröße"

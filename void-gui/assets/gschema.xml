@@ -9,5 +9,13 @@
       <default>true</default>
       <summary>Use dark theme</summary>
     </key>
+    <key name="icon-size" type="i">
+      <default>48</default>
+      <summary>Icon size in the grid view</summary>
+    </key>
+    <key name="sort-order" type="s">
+      <default>'az'</default>
+      <summary>Sort order in the grid view (az or za)</summary>
+    </key>
   </schema>
 </schemalist>

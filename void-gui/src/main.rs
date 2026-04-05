@@ -4,26 +4,24 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-mod login;
+mod application;
+mod dialogs;
+mod file_viewer;
+mod i18n;
+mod main_view;
+mod pages;
 mod settings;
+mod thumbnails;
+mod window;
 
 use libadwaita as adw;
 
 use adw::gio::resources_register_include;
 use adw::prelude::*;
-use adw::Application;
 
+/// Application entry point: initializes i18n, registers GResource assets, and starts the GTK event loop.
 fn main() {
+    i18n::init();
     resources_register_include!("void.gresource").expect("Failed to register resources.");
-
-    let application = Application::builder()
-        .application_id("me.acristoffers.void")
-        .build();
-
-    application.connect_activate(|app| {
-        let login_window = login::login_window(app);
-        login_window.show();
-    });
-
-    application.run();
+    application::VoidApplication::new().run();
 }

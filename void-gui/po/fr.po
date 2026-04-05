@@ -1,0 +1,130 @@
+# French translations for void package.
+# Copyright (C) 2024 Álan Crístoffer e Sousa
+# This file is distributed under the same license as the void package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: void 1.0.0\n"
+"Report-Msgid-Bugs-To: acristoffers@startmail.com\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Settings"
+msgstr "Paramètres"
+
+msgid "Keyboard Shortcuts"
+msgstr "Raccourcis clavier"
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "About Void"
+msgstr "À propos de Void"
+
+msgid "Open or create a vault"
+msgstr "Ouvrir ou créer un coffre"
+
+msgid "Open Vault"
+msgstr "Ouvrir un coffre"
+
+msgid "Create Vault"
+msgstr "Créer un coffre"
+
+msgid "Select Vault Location"
+msgstr "Sélectionner l'emplacement du coffre"
+
+msgid "Location"
+msgstr "Emplacement"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Not a Void Store"
+msgstr "Ce n'est pas un coffre Void"
+
+msgid "The selected folder does not contain a Store.void file."
+msgstr "Le dossier sélectionné ne contient pas de fichier Store.void."
+
+msgid "Wrong Password"
+msgstr "Mot de passe incorrect"
+
+msgid "The password is incorrect."
+msgstr "Le mot de passe est incorrect."
+
+msgid "Could Not Open Store"
+msgstr "Impossible d'ouvrir le coffre"
+
+msgid "Failed to open the store"
+msgstr "Échec de l'ouverture du coffre"
+
+msgid "Confirm Password"
+msgstr "Confirmer le mot de passe"
+
+msgid "Passwords do not match"
+msgstr "Les mots de passe ne correspondent pas"
+
+msgid "Folder Not Empty"
+msgstr "Dossier non vide"
+
+msgid "The selected folder is not empty. Please choose an empty folder or a new location."
+msgstr "Le dossier sélectionné n'est pas vide. Veuillez choisir un dossier vide ou un nouvel emplacement."
+
+msgid "Could Not Create Store"
+msgstr "Impossible de créer le coffre"
+
+msgid "Failed to create the store"
+msgstr "Échec de la création du coffre"
+
+msgid "An encrypted file store with a filesystem-like structure."
+msgstr "Un coffre de fichiers chiffré avec une structure de type système de fichiers."
+
+msgid "General"
+msgstr "Général"
+
+msgid "Use System Theme"
+msgstr "Utiliser le thème système"
+
+msgid "System Theme"
+msgstr "Thème système"
+
+msgid "Use Dark Theme"
+msgstr "Utiliser le thème sombre"
+
+msgid "Dark Theme"
+msgstr "Thème sombre"
+
+msgid "Application Theme"
+msgstr "Thème de l'application"
+
+msgid "No Location Selected"
+msgstr "Aucun emplacement sélectionné"
+
+msgid "Please select a vault location first."
+msgstr "Veuillez d'abord sélectionner un emplacement de coffre."
+
+msgid "Cannot Read Folder"
+msgstr "Impossible de lire le dossier"
+
+msgid "Could not read the selected folder"
+msgstr "Impossible de lire le dossier sélectionné"
+
+msgid "New Window"
+msgstr "Nouvelle fenêtre"
+
+msgid "Information"
+msgstr "Informations"
+
+msgid "A → Z"
+msgstr "A → Z"
+
+msgid "Z → A"
+msgstr "Z → A"
+
+msgid "Icon Size"
+msgstr "Taille des icônes"

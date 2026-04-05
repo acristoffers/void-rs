@@ -1,0 +1,172 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Álan Crístoffer e Sousa
+# This file is distributed under the same license as the void package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: void 1.0.0\n"
+"Report-Msgid-Bugs-To: acristoffers@startmail.com\n"
+"POT-Creation-Date: 2026-04-05 13:33+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: void-gui/src/pages/login_page.rs:20 void-gui/src/window.rs:205
+#: void-gui/src/settings.rs:90 void-gui/src/settings.rs:95
+msgid "Settings"
+msgstr ""
+
+#: void-gui/src/pages/login_page.rs:23 void-gui/src/window.rs:206
+#: void-gui/src/window.rs:222
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+#: void-gui/src/pages/login_page.rs:24
+msgid "Help"
+msgstr ""
+
+#: void-gui/src/pages/login_page.rs:25
+msgid "About Void"
+msgstr ""
+
+#: void-gui/src/pages/login_page.rs:48
+msgid "Open or create a vault"
+msgstr ""
+
+#: void-gui/src/pages/login_page.rs:51 void-gui/src/pages/open_page.rs:33
+#: void-gui/src/pages/open_page.rs:120 void-gui/src/window.rs:203
+msgid "Open Vault"
+msgstr ""
+
+#: void-gui/src/pages/login_page.rs:56 void-gui/src/pages/create_page.rs:41
+#: void-gui/src/pages/create_page.rs:170 void-gui/src/window.rs:204
+msgid "Create Vault"
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:22 void-gui/src/pages/create_page.rs:22
+msgid "Location"
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:26 void-gui/src/pages/create_page.rs:26
+msgid "Password"
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:53 void-gui/src/pages/create_page.rs:62
+msgid "No Location Selected"
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:54 void-gui/src/pages/create_page.rs:63
+msgid "Please select a vault location first."
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:62
+msgid "Not a Void Store"
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:63
+msgid "The selected folder does not contain a Store.void file."
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:78
+msgid "Wrong Password"
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:79
+msgid "The password is incorrect."
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:85
+msgid "Could Not Open Store"
+msgstr ""
+
+#: void-gui/src/pages/open_page.rs:86
+msgid "Failed to open the store"
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:28
+msgid "Confirm Password"
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:36
+msgid "Passwords do not match"
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:76
+msgid "Folder Not Empty"
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:77
+msgid ""
+"The selected folder is not empty. Please choose an empty folder or a new "
+"location."
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:85
+msgid "Cannot Read Folder"
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:86
+msgid "Could not read the selected folder"
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:105
+msgid "Could Not Create Store"
+msgstr ""
+
+#: void-gui/src/pages/create_page.rs:106
+msgid "Failed to create the store"
+msgstr ""
+
+#: void-gui/src/window.rs:163
+msgid "An encrypted file store with a filesystem-like structure."
+msgstr ""
+
+#: void-gui/src/window.rs:201
+msgid "General"
+msgstr ""
+
+#: void-gui/src/settings.rs:32
+msgid "Use System Theme"
+msgstr ""
+
+#: void-gui/src/settings.rs:45
+msgid "System Theme"
+msgstr ""
+
+#: void-gui/src/settings.rs:52
+msgid "Use Dark Theme"
+msgstr ""
+
+#: void-gui/src/settings.rs:65
+msgid "Dark Theme"
+msgstr ""
+
+#: void-gui/src/settings.rs:85
+msgid "Application Theme"
+msgstr ""
+
+#: void-gui/src/main_view.rs:111
+msgid "New Window"
+msgstr ""
+
+#: void-gui/src/main_view.rs:117
+msgid "A → Z"
+msgstr ""
+
+#: void-gui/src/main_view.rs:118
+msgid "Z → A"
+msgstr ""
+
+#: void-gui/src/main_view.rs:135
+msgid "Icon Size"
+msgstr ""
+
+#: void-gui/src/main_view.rs:167
+msgid "Information"
+msgstr ""

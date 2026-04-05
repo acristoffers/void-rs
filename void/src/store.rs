@@ -14,6 +14,10 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::{Read, Write};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -246,6 +250,26 @@ impl Store {
     /// * `file_path` - File path in the disk.
     /// * `store_path` - Path in store where to save.
     pub fn add(&mut self, file_path: &str, store_path: &str) -> Result<(), Error> {
+        self.add_inner(file_path, store_path, &Arc::new(AtomicU64::new(0)))
+    }
+
+    /// Like [`add`] but increments `bytes_done` after each 50 MB chunk is
+    /// encrypted so callers can display a progress indicator.
+    pub fn add_with_progress(
+        &mut self,
+        file_path: &str,
+        store_path: &str,
+        bytes_done: Arc<AtomicU64>,
+    ) -> Result<(), Error> {
+        self.add_inner(file_path, store_path, &bytes_done)
+    }
+
+    fn add_inner(
+        &mut self,
+        file_path: &str,
+        store_path: &str,
+        bytes_done: &Arc<AtomicU64>,
+    ) -> Result<(), Error> {
         let source_contents = file_path.ends_with('/');
 
         let file_path: String = file_path.into();
@@ -298,7 +322,7 @@ impl Store {
                 {
                     self.fs.mkdirp(&store_path.path)?;
                 } else {
-                    self.add(&entry_path.path, &store_path.path)?;
+                    self.add_inner(&entry_path.path, &store_path.path, bytes_done)?;
                 }
             }
         } else {
@@ -369,8 +393,8 @@ impl Store {
                     .last()
                     .ok_or(Error::InternalStructureError)?;
 
-                let bytes_read = &bytes[..bytes_read];
-                let content = crypto::encrypt(bytes_read, &key, &iv)?;
+                let bytes_read_slice = &bytes[..bytes_read];
+                let content = crypto::encrypt(bytes_read_slice, &key, &iv)?;
                 let part_name = hex::encode(data.id.to_be_bytes());
                 let part_name = format!("{part_name:0>32}");
                 let part_file = store_folder
@@ -389,6 +413,8 @@ impl Store {
                     }
                     return Err(Error::CannotWriteFileError);
                 };
+
+                bytes_done.fetch_add(bytes_read_slice.len() as u64, Ordering::Relaxed);
             }
         }
 

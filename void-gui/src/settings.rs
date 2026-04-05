@@ -5,18 +5,35 @@
  */
 
 use adw::gio::SettingsBindFlags;
-use adw::gtk::{Box, Label, Orientation, Switch};
+use adw::gtk::{Box, Label, Orientation, Switch, Window};
 use libadwaita as adw;
 
 use adw::gdk::gio::Settings;
 use adw::{prelude::*, StyleManager};
 use adw::{PreferencesGroup, PreferencesPage, PreferencesRow, PreferencesWindow};
 
-pub fn settings_window() -> PreferencesWindow {
+use crate::i18n::gettext;
+
+/// Reads the `use-system` and `dark-theme` GSettings keys and applies the
+/// corresponding Adwaita colour scheme.
+fn apply_theme(settings: &Settings) {
+    let style_manager = StyleManager::default();
+    if settings.boolean("use-system") {
+        style_manager.set_color_scheme(adw::ColorScheme::Default);
+    } else if settings.boolean("dark-theme") {
+        style_manager.set_color_scheme(adw::ColorScheme::ForceDark);
+    } else {
+        style_manager.set_color_scheme(adw::ColorScheme::ForceLight);
+    }
+}
+
+/// Builds and returns the preferences window with theme toggle switches
+/// bound to GSettings.
+pub fn settings_window(parent: Option<&Window>) -> PreferencesWindow {
     let settings = Settings::new("me.acristoffers.void");
 
     let system_theme_switch = Switch::new();
-    let system_theme_label = Label::new(Some("Use System Theme"));
+    let system_theme_label = Label::new(Some(&gettext("Use System Theme")));
     system_theme_label.set_hexpand(true);
     system_theme_label.set_halign(adw::gtk::Align::Start);
 
@@ -29,14 +46,14 @@ pub fn settings_window() -> PreferencesWindow {
     system_theme_box.append(&system_theme_switch);
 
     let system_theme = PreferencesRow::builder()
-        .title("System Theme")
+        .title(&gettext("System Theme"))
         .activatable(true)
         .name("System Theme")
         .child(&system_theme_box)
         .build();
 
     let dark_theme_switch = Switch::new();
-    let dark_theme_label = Label::new(Some("Use Dark Theme"));
+    let dark_theme_label = Label::new(Some(&gettext("Use Dark Theme")));
     dark_theme_label.set_hexpand(true);
     dark_theme_label.set_halign(adw::gtk::Align::Start);
 
@@ -49,7 +66,7 @@ pub fn settings_window() -> PreferencesWindow {
     dark_theme_box.append(&dark_theme_switch);
 
     let dark_theme = PreferencesRow::builder()
-        .title("Dark Theme")
+        .title(&gettext("Dark Theme"))
         .activatable(true)
         .name("Dark Theme")
         .child(&dark_theme_box)
@@ -65,49 +82,23 @@ pub fn settings_window() -> PreferencesWindow {
         .flags(SettingsBindFlags::DEFAULT)
         .build();
 
-    settings.connect_changed(Some("use-system"), |s, _| {
-        let use_system = s.boolean("use-system");
-        let dark_theme = s.boolean("dark-theme");
-        let style_manager = StyleManager::default();
-        if use_system {
-            style_manager.set_color_scheme(adw::ColorScheme::Default);
-        } else {
-            if dark_theme {
-                style_manager.set_color_scheme(adw::ColorScheme::ForceDark);
-            } else {
-                style_manager.set_color_scheme(adw::ColorScheme::ForceLight);
-            }
-        }
-    });
-
-    settings.connect_changed(Some("dark-theme"), |s, _| {
-        let use_system = s.boolean("use-system");
-        let dark_theme = s.boolean("dark-theme");
-        let style_manager = StyleManager::default();
-        if use_system {
-            style_manager.set_color_scheme(adw::ColorScheme::Default);
-        } else {
-            if dark_theme {
-                style_manager.set_color_scheme(adw::ColorScheme::ForceDark);
-            } else {
-                style_manager.set_color_scheme(adw::ColorScheme::ForceLight);
-            }
-        }
-    });
+    settings.connect_changed(Some("use-system"), |s, _| apply_theme(s));
+    settings.connect_changed(Some("dark-theme"), |s, _| apply_theme(s));
 
     let group = PreferencesGroup::new();
-    group.set_title("Application Theme");
+    group.set_title(&gettext("Application Theme"));
     group.add(&system_theme);
     group.add(&dark_theme);
 
     let page = PreferencesPage::new();
-    page.set_title("Settings");
+    page.set_title(&gettext("Settings"));
     page.set_icon_name(Some("preferences-system-symbolic"));
     page.add(&group);
 
     let window = PreferencesWindow::new();
-    window.set_title(Some("Settings"));
+    window.set_title(Some(&gettext("Settings")));
     window.set_icon_name(Some("settings-symbolic"));
+    window.set_transient_for(parent);
     window.add(&page);
     window.set_visible_page(&page);
 
