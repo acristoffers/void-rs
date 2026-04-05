@@ -30,6 +30,7 @@ pub enum Error {
     FileAlreadyExistsError,
     FileDoesNotExistError,
     FolderDoesNotExistError,
+    NotAFileError,
     StoreFileAlreadyExistsError,
     NoSuchMetadataKey,
     InternalStructureError,
@@ -46,14 +47,18 @@ impl Display for Error {
 impl std::error::Error for Error {}
 
 fn serialize<T: Serialize>(value: &T) -> Result<Vec<u8>, Error> {
-    bincode::serialize(value).map_err(|_| Error::CannotSerializeError)
+    postcard::to_allocvec(value).map_err(|_| Error::CannotSerializeError)
 }
 
 fn deserialize<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
+    postcard::from_bytes(bytes).map_err(|_| Error::CannotDeserializeError)
+}
+
+fn deserialize_bincode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
     bincode::deserialize(bytes).map_err(|_| Error::CannotDeserializeError)
 }
 
-const STORE_VERSION: u32 = 1;
+const STORE_VERSION: u32 = 2;
 
 #[derive(Serialize, Deserialize)]
 struct StoreFile {
@@ -74,12 +79,7 @@ pub struct Store {
 
 impl Store {
     /// Saves the content of store to file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path of the store.
-    /// * `password` - Password that encrypts the store.
-    fn save(&mut self) -> Result<(), Error> {
+    pub fn save(&mut self) -> Result<(), Error> {
         let store_folder = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
         let store_journal = store_folder
             .join("Store.void")
@@ -177,9 +177,25 @@ impl Store {
         }
 
         let bytes = fs::read(store_journal.path).map_err(|_| Error::CannotReadFileError)?;
-        let store_file: StoreFile = deserialize(bytes.as_slice())?;
 
-        if store_file.version != STORE_VERSION {
+        // Version 1 stores are bincode-encoded; version 2+ are postcard.
+        // We check bincode first: if it decodes and reports version == 1 it's a
+        // legacy store.  Otherwise we fall through to postcard.
+        let (store_file, is_legacy) =
+            if let Ok(sf) = deserialize_bincode::<StoreFile>(bytes.as_slice()) {
+                if sf.version == 1 {
+                    (sf, true)
+                } else {
+                    // Bincode decoded something, but it isn't v1 — try postcard.
+                    let sf2 = deserialize::<StoreFile>(bytes.as_slice())?;
+                    (sf2, false)
+                }
+            } else {
+                let sf = deserialize::<StoreFile>(bytes.as_slice())?;
+                (sf, false)
+            };
+
+        if store_file.version > STORE_VERSION {
             return Err(Error::UnsupportedVersionError);
         }
 
@@ -196,14 +212,25 @@ impl Store {
         let fs = store_file.fs.as_slice();
         let fs = crypto::decrypt(fs, &key, &iv);
         let fs = fs.map_err(|_| Error::CannotDecryptFileError)?;
-        let fs: Filesystem = deserialize(fs.as_slice())?;
 
-        let store = Store {
+        // Filesystem blob: try postcard first, then bincode for legacy stores.
+        let fs: Filesystem = if is_legacy {
+            deserialize_bincode(fs.as_slice())?
+        } else {
+            deserialize(fs.as_slice())?
+        };
+
+        let mut store = Store {
             fs,
             key,
             path: store_folder.path,
             salt,
         };
+
+        // Migrate legacy bincode store to postcard in-place.
+        if is_legacy {
+            store.save()?;
+        }
 
         Ok(store)
     }
@@ -229,20 +256,23 @@ impl Store {
         let store_folder = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
 
         if file_path.is_dir() {
-            let store_path = match self.fs.exists(&store_path.path)? {
+            let (store_path, joined) = match self.fs.exists(&store_path.path)? {
                 Some(id) => {
                     let node = self.fs.get(id)?;
                     if node.is_file {
                         return Err(Error::CannotCreateDirectoryError);
                     } else if source_contents || &store_path.path == "/" {
-                        store_path
+                        (store_path, false)
                     } else {
-                        store_path
-                            .join(&file_path.name)
-                            .ok_or(Error::CannotParseError)?
+                        (
+                            store_path
+                                .join(&file_path.name)
+                                .ok_or(Error::CannotParseError)?,
+                            true,
+                        )
                     }
                 }
-                None => store_path,
+                None => (store_path, false),
             };
 
             for entry in walkdir::WalkDir::new(&file_path.path)
@@ -250,7 +280,7 @@ impl Store {
                 .into_iter()
                 .filter_map(Result::ok)
             {
-                let file_path = if source_contents {
+                let reroot_base = if source_contents || joined {
                     &file_path.path
                 } else {
                     &file_path.parent
@@ -258,7 +288,7 @@ impl Store {
 
                 let entry_path: RealPath = entry.path().to_path_buf().into();
                 let store_path = entry_path
-                    .reroot_as_virtual(file_path, &store_path.path)
+                    .reroot_as_virtual(reroot_base, &store_path.path)
                     .ok_or(Error::CannotParseError)?;
 
                 if entry
@@ -427,6 +457,41 @@ impl Store {
         Ok(())
     }
 
+    /// Decrypts a file from the store and returns its contents as bytes.
+    ///
+    /// # Arguments
+    ///
+    /// * `store_path` - Path of the file inside the store.
+    pub fn get_bytes(&self, store_path: &str) -> Result<Vec<u8>, Error> {
+        let store_path: String = store_path.into();
+        let store_path = VirtualPath::new(&store_path).ok_or(Error::CannotParseError)?;
+
+        let id = self
+            .fs
+            .exists(&store_path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
+        let file = self.fs.get(id)?;
+
+        if !file.is_file {
+            return Err(Error::NotAFileError);
+        }
+
+        let store_disk = RealPath::new(&self.path).ok_or(Error::CannotParseError)?;
+        let mut result = Vec::with_capacity(file.size as usize);
+
+        for data in &file.data {
+            let part_name = hex::encode(data.id.to_be_bytes());
+            let part_name = format!("{part_name:0>32}");
+            let part_path = store_disk.join(part_name).ok_or(Error::CannotParseError)?;
+            let cipher = fs::read(part_path.path).map_err(|_| Error::CannotReadFileError)?;
+            let content = crypto::decrypt(cipher.as_slice(), &data.key, &data.iv)
+                .map_err(|_| Error::CannotDecryptFileError)?;
+            result.extend_from_slice(&content);
+        }
+
+        Ok(result)
+    }
+
     /// Removes a file or folder from the store.
     ///
     /// # Arguments
@@ -475,6 +540,14 @@ impl Store {
         let dst_id = self.fs.mkdirp(&dst.parent)?;
 
         self.fs.mv(src_id, dst_id)
+    }
+
+    /// Creates a directory (and any missing parents) inside the store.
+    pub fn mkdir(&mut self, path: &str) -> Result<(), Error> {
+        let path: String = path.into();
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
+        self.fs.mkdirp(&path.path)?;
+        self.save()
     }
 
     /// Lists files in the store.
@@ -549,6 +622,24 @@ impl Store {
         self.fs.set_metadata(id, &key, &value)?;
 
         self.save()
+    }
+
+    /// Sets a metadata key/value without persisting to disk.
+    /// Call `save()` separately to flush accumulated changes.
+    pub fn metadata_set_nosave(&mut self, path: &str, key: &str, value: &str) -> Result<(), Error> {
+        let path: String = path.into();
+        let key: String = key.into();
+        let value: String = value.into();
+
+        let path = VirtualPath::new(&path).ok_or(Error::CannotParseError)?;
+
+        let id = self
+            .fs
+            .exists(&path.path)?
+            .ok_or(Error::FileDoesNotExistError)?;
+        self.fs.set_metadata(id, &key, &value)?;
+
+        Ok(())
     }
 
     /// Removes a key from the node's metadata
@@ -753,5 +844,18 @@ impl Store {
         }
 
         Ok(removed)
+    }
+
+    /// Re-encrypts the store index with a new password.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_password` - The new password to use.
+    pub fn change_password(&mut self, new_password: &str) -> Result<(), Error> {
+        let new_salt = crypto::uuid();
+        let new_key = crypto::derive_key(new_password, &new_salt)?;
+        self.key = new_key;
+        self.salt = new_salt;
+        self.save()
     }
 }

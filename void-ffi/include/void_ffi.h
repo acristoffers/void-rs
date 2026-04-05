@@ -50,6 +50,8 @@ extern "C" {
 #define VOID_ERR_NO_SUCH_METADATA_KEY      15
 #define VOID_ERR_INTERNAL_STRUCTURE        16
 #define VOID_ERR_KEY_DERIVATION            17
+#define VOID_ERR_UNSUPPORTED_VERSION       18
+#define VOID_ERR_NOT_A_FILE                19
 
 /* -------------------------------------------------------------------------
  * Opaque handle
@@ -79,6 +81,12 @@ typedef struct {
     VoidFile *items;   /* null when len == 0 */
     size_t    len;
 } VoidFileArray;
+
+/** Owned byte buffer. Free with void_byte_array_free. */
+typedef struct {
+    uint8_t *data;     /* null when len == 0 */
+    size_t   len;
+} VoidByteArray;
 
 /** Owned array of NUL-terminated strings. Free with void_string_array_free. */
 typedef struct {
@@ -135,11 +143,20 @@ int void_store_add(VoidStore *store, const char *file_path, const char *store_pa
  */
 int void_store_get(const VoidStore *store, const char *store_path, const char *file_path);
 
+/**
+ * Reads the decrypted contents of a file into memory.
+ * On success writes a VoidByteArray to *out.  Free with void_byte_array_free.
+ */
+int void_store_get_bytes(const VoidStore *store, const char *store_path, VoidByteArray *out);
+
 /** Removes a file or directory (recursively) from the store. */
 int void_store_remove(VoidStore *store, const char *path);
 
 /** Moves or renames an entry within the store. */
 int void_store_mv(VoidStore *store, const char *src, const char *dst);
+
+/** Creates a directory (and any missing parents) inside the store. */
+int void_store_mkdir(VoidStore *store, const char *path);
 
 /**
  * Lists entries at path.  Pass "*" to list every file in the store.
@@ -157,6 +174,16 @@ int void_store_truncate(VoidStore *store, const char *path);
 /** Sets a metadata key/value on the node at path. */
 int void_store_metadata_set(VoidStore *store, const char *path,
                              const char *key, const char *value);
+
+/**
+ * Sets a metadata key/value without persisting to disk.
+ * Call void_store_save() to flush accumulated changes.
+ */
+int void_store_metadata_set_nosave(VoidStore *store, const char *path,
+                                    const char *key, const char *value);
+
+/** Persists the store to disk. Use after one or more _nosave operations. */
+int void_store_save(VoidStore *store);
 
 /** Removes a metadata key from the node at path. */
 int void_store_metadata_remove(VoidStore *store, const char *path, const char *key);
@@ -225,6 +252,9 @@ int void_store_gc(const VoidStore *store, size_t *removed);
 
 /** Frees a string returned by the library. Safe to call with NULL. */
 void void_string_free(char *s);
+
+/** Frees a VoidByteArray. */
+void void_byte_array_free(VoidByteArray arr);
 
 /** Frees a VoidFileArray and all strings it contains. */
 void void_file_array_free(VoidFileArray arr);

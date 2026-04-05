@@ -70,6 +70,13 @@ fn main() {
             }
         }
 
+        Commands::Mkdir { store_path, path } => {
+            let pswd = read_password(options.password);
+            if store::mkdir(store_path, path, pswd).is_none() {
+                std::process::exit(1);
+            }
+        }
+
         Commands::MetadataSet {
             store_path,
             path,
@@ -169,6 +176,30 @@ fn main() {
         Commands::GC { store_path } => {
             let pswd = read_password(options.password);
             if store::gc(store_path, pswd).is_none() {
+                std::process::exit(1);
+            }
+        }
+
+        Commands::ChangePassword { store_path } => {
+            let pswd = read_password(options.password.clone());
+            let new_pswd = loop {
+                let p1 = match options.password.clone() {
+                    Some(p) => p,
+                    None => {
+                        let p = rpassword::prompt_password("New password: ")
+                            .expect("Error reading password.");
+                        let p2 = rpassword::prompt_password("Confirm new password: ")
+                            .expect("Error reading password.");
+                        if p != p2 {
+                            println!("Passwords do not match.");
+                            continue;
+                        }
+                        p
+                    }
+                };
+                break p1;
+            };
+            if store::change_password(store_path, pswd, new_pswd).is_none() {
                 std::process::exit(1);
             }
         }

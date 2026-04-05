@@ -61,6 +61,18 @@ pub enum Commands {
         path: String,
     },
 
+    /// Creates a directory inside the store
+    #[command()]
+    Mkdir {
+        /// Path to the store folder
+        #[arg(short = 's', env = "VOID_STORE")]
+        store_path: String,
+
+        /// Path of the directory to create
+        #[arg()]
+        path: String,
+    },
+
     /// List files in the store
     #[command()]
     LS {
@@ -224,6 +236,14 @@ pub enum Commands {
     /// Remove orphaned encrypted chunks from the store directory
     #[command()]
     GC {
+        /// Path to the store folder
+        #[arg(short = 's', env = "VOID_STORE")]
+        store_path: String,
+    },
+
+    /// Change the store password
+    #[command()]
+    ChangePassword {
         /// Path to the store folder
         #[arg(short = 's', env = "VOID_STORE")]
         store_path: String,

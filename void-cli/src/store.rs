@@ -109,6 +109,16 @@ pub fn remove(store_path: String, path: String, password: String) -> Option<()> 
         .ok()
 }
 
+pub fn mkdir(store_path: String, path: String, password: String) -> Option<()> {
+    open_store(store_path, password)?
+        .mkdir(&path)
+        .inspect_err(|error| {
+            let msg = format!("An error occurred: {error:?}");
+            eprint!("{msg}");
+        })
+        .ok()
+}
+
 pub fn list(
     store_path: String,
     path: String,
@@ -443,5 +453,21 @@ pub fn tag_search(store_path: String, tags: Vec<String>, password: String) -> Op
 
     table.printstd();
 
+    Some(())
+}
+
+pub fn change_password(store_path: String, password: String, new_password: String) -> Option<()> {
+    let mut store = open_store(store_path, password)?;
+
+    store
+        .change_password(&new_password)
+        .map_err(|error| {
+            let msg = format!("An error occurred: {error:?}");
+            eprint!("{msg}");
+            error
+        })
+        .ok()?;
+
+    println!("Password changed successfully.");
     Some(())
 }

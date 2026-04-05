@@ -19,6 +19,10 @@
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 use void::{Error, File, Store};
 
 // ---------------------------------------------------------------------------
@@ -44,6 +48,7 @@ pub const VOID_ERR_NO_SUCH_METADATA_KEY: i32 = 15;
 pub const VOID_ERR_INTERNAL_STRUCTURE: i32 = 16;
 pub const VOID_ERR_KEY_DERIVATION: i32 = 17;
 pub const VOID_ERR_UNSUPPORTED_VERSION: i32 = 18;
+pub const VOID_ERR_NOT_A_FILE: i32 = 19;
 
 fn map_err(e: Error) -> i32 {
     match e {
@@ -60,6 +65,7 @@ fn map_err(e: Error) -> i32 {
         Error::FileAlreadyExistsError => VOID_ERR_FILE_ALREADY_EXISTS,
         Error::FileDoesNotExistError => VOID_ERR_FILE_DOES_NOT_EXIST,
         Error::FolderDoesNotExistError => VOID_ERR_FOLDER_DOES_NOT_EXIST,
+        Error::NotAFileError => VOID_ERR_NOT_A_FILE,
         Error::StoreFileAlreadyExistsError => VOID_ERR_STORE_FILE_ALREADY_EXISTS,
         Error::NoSuchMetadataKey => VOID_ERR_NO_SUCH_METADATA_KEY,
         Error::InternalStructureError => VOID_ERR_INTERNAL_STRUCTURE,
@@ -93,6 +99,13 @@ pub struct VoidFile {
 #[repr(C)]
 pub struct VoidFileArray {
     pub items: *mut VoidFile,
+    pub len: usize,
+}
+
+/// Owned byte buffer. Free with `void_byte_array_free`.
+#[repr(C)]
+pub struct VoidByteArray {
+    pub data: *mut u8,
     pub len: usize,
 }
 
@@ -302,6 +315,48 @@ pub unsafe extern "C" fn void_store_add(
         .map_or_else(map_err, |_| VOID_OK)
 }
 
+/// Like [`void_store_add`] but writes the total number of bytes processed to
+/// `*bytes_done` when the operation completes.
+///
+/// For **real-time** progress the caller should run this function on a worker
+/// thread and periodically read `*bytes_done` from the main thread (the value
+/// is updated atomically during the operation).
+///
+/// `bytes_done` may be null, in which case progress is silently discarded.
+///
+/// # Safety
+///
+/// `bytes_done`, if not null, must point to a valid `uint64_t` that remains
+/// alive for the entire duration of the call.
+#[no_mangle]
+pub unsafe extern "C" fn void_store_add_with_progress(
+    store: *mut VoidStore,
+    file_path: *const c_char,
+    store_path: *const c_char,
+    bytes_done: *mut u64,
+) -> i32 {
+    let store = match store.as_mut() {
+        Some(s) => &mut s.0,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    let file_path = match to_str(file_path) {
+        Some(s) => s,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    let store_path = match to_str(store_path) {
+        Some(s) => s,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    let counter = Arc::new(AtomicU64::new(0));
+    let result = store
+        .add_with_progress(file_path, store_path, counter.clone())
+        .map_or_else(map_err, |_| VOID_OK);
+    if !bytes_done.is_null() {
+        *bytes_done = counter.load(Ordering::Relaxed);
+    }
+    result
+}
+
 /// Decrypts the entry at `store_path` and writes it to `file_path` on disk.
 #[no_mangle]
 pub unsafe extern "C" fn void_store_get(
@@ -324,6 +379,41 @@ pub unsafe extern "C" fn void_store_get(
     store
         .get(store_path, file_path)
         .map_or_else(map_err, |_| VOID_OK)
+}
+
+/// Reads the decrypted contents of a file into memory.
+///
+/// On success writes a `VoidByteArray` to `*out` and returns `VOID_OK`.
+/// Free the array with `void_byte_array_free`.
+#[no_mangle]
+pub unsafe extern "C" fn void_store_get_bytes(
+    store: *const VoidStore,
+    store_path: *const c_char,
+    out: *mut VoidByteArray,
+) -> i32 {
+    if out.is_null() {
+        return VOID_ERR_CANNOT_PARSE;
+    }
+    let store = match store.as_ref() {
+        Some(s) => &s.0,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    let store_path = match to_str(store_path) {
+        Some(s) => s,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    match store.get_bytes(store_path) {
+        Ok(bytes) => {
+            let mut boxed = bytes.into_boxed_slice();
+            *out = VoidByteArray {
+                len: boxed.len(),
+                data: boxed.as_mut_ptr(),
+            };
+            std::mem::forget(boxed);
+            VOID_OK
+        }
+        Err(e) => map_err(e),
+    }
 }
 
 /// Removes a file or directory (recursively) from the store.
@@ -360,6 +450,20 @@ pub unsafe extern "C" fn void_store_mv(
         None => return VOID_ERR_CANNOT_PARSE,
     };
     store.mv(src, dst).map_or_else(map_err, |_| VOID_OK)
+}
+
+/// Creates a directory (and any missing parents) inside the store.
+#[no_mangle]
+pub unsafe extern "C" fn void_store_mkdir(store: *mut VoidStore, path: *const c_char) -> i32 {
+    let store = match store.as_mut() {
+        Some(s) => &mut s.0,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    let path = match to_str(path) {
+        Some(s) => s,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    store.mkdir(path).map_or_else(map_err, |_| VOID_OK)
 }
 
 /// Lists files at `path`. Pass `"*"` to list all files in the store.
@@ -429,6 +533,38 @@ pub unsafe extern "C" fn void_store_metadata_set(
     store
         .metadata_set(path, key, value)
         .map_or_else(map_err, |_| VOID_OK)
+}
+
+/// Sets a metadata key/value without persisting to disk.
+/// Call `void_store_save` to flush accumulated changes.
+#[no_mangle]
+pub unsafe extern "C" fn void_store_metadata_set_nosave(
+    store: *mut VoidStore,
+    path: *const c_char,
+    key: *const c_char,
+    value: *const c_char,
+) -> i32 {
+    let store = match store.as_mut() {
+        Some(s) => &mut s.0,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    let (path, key, value) = match (to_str(path), to_str(key), to_str(value)) {
+        (Some(p), Some(k), Some(v)) => (p, k, v),
+        _ => return VOID_ERR_CANNOT_PARSE,
+    };
+    store
+        .metadata_set_nosave(path, key, value)
+        .map_or_else(map_err, |_| VOID_OK)
+}
+
+/// Persists the store to disk. Use after one or more `_nosave` operations.
+#[no_mangle]
+pub unsafe extern "C" fn void_store_save(store: *mut VoidStore) -> i32 {
+    let store = match store.as_mut() {
+        Some(s) => &mut s.0,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    store.save().map_or_else(map_err, |_| VOID_OK)
 }
 
 /// Removes a metadata key from the node at `path`.
@@ -673,6 +809,30 @@ pub unsafe extern "C" fn void_store_gc(store: *const VoidStore, removed: *mut us
     }
 }
 
+/// Re-encrypts the store index with a new password.
+/// Returns `VOID_OK` on success.
+#[no_mangle]
+pub unsafe extern "C" fn void_store_change_password(
+    store: *mut VoidStore,
+    new_password: *const c_char,
+) -> i32 {
+    let store = match store.as_mut() {
+        Some(s) => &mut s.0,
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    let new_password = match new_password.as_ref() {
+        Some(_) => match CStr::from_ptr(new_password).to_str() {
+            Ok(s) => s,
+            Err(_) => return VOID_ERR_CANNOT_PARSE,
+        },
+        None => return VOID_ERR_CANNOT_PARSE,
+    };
+    match store.change_password(new_password) {
+        Ok(()) => VOID_OK,
+        Err(e) => map_err(e),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Memory management
 // ---------------------------------------------------------------------------
@@ -683,6 +843,17 @@ pub unsafe extern "C" fn void_string_free(s: *mut c_char) {
     if !s.is_null() {
         drop(CString::from_raw(s));
     }
+}
+
+/// Frees a `VoidByteArray` returned by the library.
+#[no_mangle]
+pub unsafe extern "C" fn void_byte_array_free(arr: VoidByteArray) {
+    if arr.data.is_null() || arr.len == 0 {
+        return;
+    }
+    drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+        arr.data, arr.len,
+    )));
 }
 
 /// Frees a `VoidFileArray` returned by the library.
