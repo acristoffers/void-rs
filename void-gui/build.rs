@@ -47,4 +47,33 @@ fn main() {
             String::from_utf8_lossy(&output.stderr)
         );
     }
+
+    let share_dir = get_output_path().join("share");
+
+    // Install desktop file
+    let applications_dir = share_dir.join("applications");
+    std::fs::create_dir_all(&applications_dir).expect("Failed to create applications directory");
+    std::fs::copy(
+        "assets/me.acristoffers.void.desktop",
+        applications_dir.join("me.acristoffers.void.desktop"),
+    )
+    .expect("Could not copy desktop file");
+
+    // Install metainfo file
+    let metainfo_dir = share_dir.join("metainfo");
+    std::fs::create_dir_all(&metainfo_dir).expect("Failed to create metainfo directory");
+    std::fs::copy(
+        "assets/me.acristoffers.void.metainfo.xml",
+        metainfo_dir.join("me.acristoffers.void.metainfo.xml"),
+    )
+    .expect("Could not copy metainfo file");
+
+    // Install icon
+    let icons_dir = share_dir.join("icons/hicolor/scalable/apps");
+    std::fs::create_dir_all(&icons_dir).expect("Failed to create icons directory");
+    std::fs::copy(
+        "assets/icon.svg",
+        icons_dir.join("me.acristoffers.void.svg"),
+    )
+    .expect("Could not copy icon");
 }

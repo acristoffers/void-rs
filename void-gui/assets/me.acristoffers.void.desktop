@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=Void
+Comment=Encrypted file store
+Categories=Utility;FileManager;
+
+Icon=me.acristoffers.void
+Exec=void-gui
+Terminal=false
+StartupWMClass=void-gui

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>me.acristoffers.void</id>
+
+  <name>Void</name>
+  <summary>Encrypted file store</summary>
+
+  <developer id="me.acristoffers">
+    <name>Álan Crístoffer e Sousa</name>
+  </developer>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MPL-2.0</project_license>
+
+  <url type="homepage">https://github.com/acristoffers/void-rs</url>
+  <url type="vcs-browser">https://github.com/acristoffers/void-rs</url>
+  <url type="bugtracker">https://github.com/acristoffers/void-rs/issues</url>
+
+  <releases>
+    <release version="1.0.0" date="2026-04-06"/>
+  </releases>
+
+  <update_contact>acristoffers@startmail.com</update_contact>
+
+  <content_rating type="oars-1.0" />
+
+  <description>
+    <p>
+      Void is an encrypted file store with a filesystem-like structure. It lets you store files and
+      folders inside an encrypted vault. You can add, extract, move, rename, and organise entries
+      just like a regular filesystem, except everything is encrypted at rest with AES-256-GCM and a
+      password-derived key (Argon2).
+    </p>
+    <p>
+      The graphical interface is a GNOME/Adwaita application that provides a full file manager
+      experience for your vault, including a file grid with thumbnail previews, folder tree sidebar,
+      breadcrumb path bar, drag and drop, in-app viewers for images and text files, and
+      dark/light/system theme support.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">me.acristoffers.void.desktop</launchable>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#795548</color>
+    <color type="primary" scheme_preference="dark">#795548</color>
+  </branding>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://acristoffers.me/screenshots/Void1.png</image>
+      <caption>File browser</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://acristoffers.me/screenshots/Void2.png</image>
+      <caption>File information</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://acristoffers.me/screenshots/Void3.png</image>
+      <caption>Image viewer</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://acristoffers.me/screenshots/Void4.png</image>
+      <caption>Text editor</caption>
+    </screenshot>
+  </screenshots>
+</component>
