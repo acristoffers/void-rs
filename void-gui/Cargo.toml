@@ -3,12 +3,13 @@ name = "void-gui"
 version = "1.0.0"
 authors = ["Álan Crístoffer <acristoffers@startmail.com>"]
 edition = "2021"
+license = "MPL-2.0"
 description = "Encrypted file store."
 
 [dependencies]
 libadwaita = { version = "0.9.1", features = ["v1_5"] }
 gtk4 = { version = "0.11", features = ["v4_10"] }
-gettext-rs = "0.7"
+gettext-rs = { version = "0.7", features = ["gettext-system"] }
 image = "0.25"
 ffmpeg-next = "8"
 regex = "1"
@@ -33,3 +34,36 @@ Its goal is to provide a filesystem-like way of storing encrypted files. You can
 add (encrypt), get (unencrypt) and manage (list, search, remove and move) files
 and folders. It also allows to set/get store-only metadata.
 """
+
+[package.metadata.deb]
+section = "utils"
+depends = "$auto"
+extended-description = """\
+The graphical interface is a GNOME/Adwaita application that provides a full file manager \
+experience for your vault, including a file grid with thumbnail previews, folder tree sidebar, \
+breadcrumb path bar, drag and drop, in-app viewers for images and text files, and \
+dark/light/system theme support."""
+assets = [
+    ["target/release/void-gui", "usr/bin/", "755"],
+    ["assets/me.acristoffers.void.desktop", "usr/share/applications/", "644"],
+    ["assets/me.acristoffers.void.metainfo.xml", "usr/share/metainfo/", "644"],
+    ["assets/icon.svg", "usr/share/icons/hicolor/scalable/apps/me.acristoffers.void.svg", "644"],
+    ["assets/gschema.xml", "usr/share/glib-2.0/schemas/me.acristoffers.void.gschema.xml", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/void-gui", dest = "/usr/bin/void-gui", mode = "755" },
+    { source = "assets/me.acristoffers.void.desktop", dest = "/usr/share/applications/me.acristoffers.void.desktop", mode = "644" },
+    { source = "assets/me.acristoffers.void.metainfo.xml", dest = "/usr/share/metainfo/me.acristoffers.void.metainfo.xml", mode = "644" },
+    { source = "assets/icon.svg", dest = "/usr/share/icons/hicolor/scalable/apps/me.acristoffers.void.svg", mode = "644" },
+    { source = "assets/gschema.xml", dest = "/usr/share/glib-2.0/schemas/me.acristoffers.void.gschema.xml", mode = "644" },
+]
+post_install_script = """\
+/usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas/ 2>/dev/null || :
+/usr/bin/update-desktop-database /usr/share/applications/ 2>/dev/null || :
+/usr/bin/gtk4-update-icon-cache /usr/share/icons/hicolor/ 2>/dev/null || :"""
+post_uninstall_script = """\
+/usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas/ 2>/dev/null || :
+/usr/bin/update-desktop-database /usr/share/applications/ 2>/dev/null || :
+/usr/bin/gtk4-update-icon-cache /usr/share/icons/hicolor/ 2>/dev/null || :"""

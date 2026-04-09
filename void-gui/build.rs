@@ -18,9 +18,6 @@ fn main() {
 
     compile_resources(&["assets"], "assets/resources.xml", "void.gresource");
 
-    let pkg_name = env::var("CARGO_PKG_NAME").unwrap();
-    let pkg_version = env::var("CARGO_PKG_VERSION").unwrap();
-
     let schema_dir = get_output_path().join("share/glib-2.0/schemas");
 
     // Ensure directory exists (self-healing)

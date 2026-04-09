@@ -3,6 +3,7 @@ name = "void"
 version = "1.0.0"
 authors = ["Álan Crístoffer <acristoffers@startmail.com>"]
 edition = "2021"
+license = "MPL-2.0"
 description = "Encrypted file store."
 
 [dependencies]
@@ -34,3 +35,17 @@ clap_mangen = "0.3.0"
 name = "void"
 path = "src/lib.rs"
 crate-type = ["rlib", "cdylib", "staticlib"]
+
+[package.metadata.deb]
+name = "libvoid"
+section = "libs"
+depends = "$auto"
+assets = [
+    ["target/release/libvoid.so", "usr/lib/x86_64-linux-gnu/", "755"],
+]
+
+[package.metadata.generate-rpm]
+name = "libvoid"
+assets = [
+    { source = "target/release/libvoid.so", dest = "/usr/lib64/libvoid.so", mode = "755" },
+]
