@@ -21,10 +21,7 @@ fn main() {
     let pkg_name = env::var("CARGO_PKG_NAME").unwrap();
     let pkg_version = env::var("CARGO_PKG_VERSION").unwrap();
 
-    let schema_dir = get_output_path().join(format!(
-        "share/gsettings-schema/{}-{}/glib-2.0/schemas",
-        pkg_name, pkg_version
-    ));
+    let schema_dir = get_output_path().join("share/glib-2.0/schemas");
 
     // Ensure directory exists (self-healing)
     std::fs::create_dir_all(&schema_dir).expect("Failed to create schema directory");
