@@ -15,7 +15,7 @@ hex = "0.4.3"
 argon2 = "0.5"
 itertools = "0.14.0"
 path-absolutize = "3.1.1"
-rand = "0.10.0"
+rand = "0.10.1"
 regex = "1.12.3"
 serde_derive = "1.0.228"
 tree_magic = "0.2.3"
@@ -28,7 +28,7 @@ uuid = { version = "1.23.0", features = ["serde", "v4"] }
 
 [build-dependencies]
 clap = { version = "4.6.0", features = ["derive", "env"] }
-clap_complete = "4.6.0"
+clap_complete = "4.6.2"
 clap_mangen = "0.3.0"
 
 [lib]
