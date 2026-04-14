@@ -2513,7 +2513,7 @@ dependencies = [
 
 [[package]]
 name = "tests"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "rand 0.10.1",
  "void",
@@ -2720,7 +2720,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "void"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2745,7 +2745,7 @@ dependencies = [
 
 [[package]]
 name = "void-cli"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "bytesize",
  "clap",
@@ -2760,14 +2760,14 @@ dependencies = [
 
 [[package]]
 name = "void-ffi"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "void",
 ]
 
 [[package]]
 name = "void-gui"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "ffmpeg-next",
  "gettext-rs",

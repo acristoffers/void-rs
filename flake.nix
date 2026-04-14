@@ -10,7 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         inherit (gitignore.lib) gitignoreSource;
-        version = "1.0.0";
+        version = "1.0.1";
         pkgs = (import nixpkgs) { inherit system; };
         nativeBuildInputs = with pkgs; [ cmake pkg-config rustc cargo stdenv glib llvmPackages.libclang ];
         buildInputs = with pkgs; [ libadwaita librsvg ffmpeg makeWrapper ];
