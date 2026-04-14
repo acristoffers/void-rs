@@ -29,8 +29,8 @@
             for dir in target/*/release/share; do
               cp -r $dir $out/share
             done
-            rm -r $out/share/glib-2.0
             if [ -f $out/bin/void-gui ]; then
+              rm -fr $out/share/glib-2.0
               wrapProgram $out/bin/void-gui --set GSETTINGS_SCHEMA_DIR $out/share/gsettings-schemas/${pname}-${version}/glib-2.0/schemas
             fi
           '' ;
