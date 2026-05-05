@@ -22,13 +22,13 @@ tree_magic = "0.2.3"
 walkdir = "2.5.0"
 aes-gcm = "0.10.3"
 
-clap = { version = "4.6.0", features = ["derive", "env"] }
+clap = { version = "4.6.1", features = ["derive", "env"] }
 serde = { version = "1.0.228", features = ["derive"] }
-uuid = { version = "1.23.0", features = ["serde", "v4"] }
+uuid = { version = "1.23.1", features = ["serde", "v4"] }
 
 [build-dependencies]
-clap = { version = "4.6.0", features = ["derive", "env"] }
-clap_complete = "4.6.2"
+clap = { version = "4.6.1", features = ["derive", "env"] }
+clap_complete = "4.6.3"
 clap_mangen = "0.3.0"
 
 [lib]

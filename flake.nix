@@ -47,7 +47,7 @@
           default = void-cli;
         };
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ rustc cargo cmake pkg-config busybox fzf gcc ];
+          nativeBuildInputs = with pkgs; [ rustc cargo cargo-edit cmake pkg-config busybox fzf gcc ];
           buildInputs = buildInputs ++ [ pkgs.llvmPackages.libclang ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
           BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.glibc.dev}/include";
