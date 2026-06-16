@@ -75,6 +75,10 @@ call.
 - **Integrity**: BLAKE2 content-addressed chunks — tampering is detected on read.
 - **At rest**: Every file chunk is individually encrypted. The store index is also encrypted.
 
+## Installation
+
+There are packages for Ubuntu and Fedora in my [personal repository](https://github.com/acristoffers/repository).
+
 ## License
 
 [Mozilla Public License 2.0](LICENSE)
