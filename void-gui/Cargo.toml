@@ -11,7 +11,7 @@ libadwaita = { version = "0.9.1", features = ["v1_5"] }
 gtk4 = { version = "0.11", features = ["v4_10"] }
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
 image = "0.25"
-ffmpeg-next = "8"
+ffmpeg-next = "9"
 regex = "1"
 walkdir = "2"
 void = { path = "../void" }
