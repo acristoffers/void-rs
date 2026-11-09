@@ -66,7 +66,7 @@ jobs:
     strategy:
       matrix:
         ubuntu: ["26.04", "26.04-arm"]
-        fedora: [43, 44]
+        fedora: [43, 44, 45]
     container:
       image: fedora:${{ matrix.fedora }}
     steps:
@@ -78,7 +78,7 @@ jobs:
             ffmpeg-free-devel \
             clang-devel librsvg2-devel glib2-devel
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         run: |
