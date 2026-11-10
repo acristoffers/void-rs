@@ -178,7 +178,7 @@ pub fn list(
     } else {
         let cells: Vec<Cell> = files.iter().map(|file| cell![file.0]).collect();
         let max_width = files.iter().map(|file| file.0.len()).max()?;
-        let term_width = term_size::dimensions()?.0;
+        let term_width = usize::from(terminal_size::terminal_size()?.0 .0);
         let cells_per_row: usize = if term_width >= max_width {
             term_width / max_width
         } else {

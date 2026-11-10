@@ -348,7 +348,8 @@ impl Store {
             let mut file_handle = file_handle.map_err(|_| Error::CannotReadFileError)?;
 
             let file_std_path = std::path::Path::new(&file_path.path);
-            let mimetype = tree_magic::from_filepath(file_std_path);
+            let mimetype =
+                tree_magic_mini::from_filepath(file_std_path).unwrap_or("application/octet-stream");
 
             let file_size = file_std_path
                 .metadata()
@@ -357,7 +358,7 @@ impl Store {
 
             let node_id = self.fs.touch(&store_path.path)?;
             self.fs.set_size(node_id, file_size)?;
-            self.fs.set_metadata(node_id, "mimetype", &mimetype)?;
+            self.fs.set_metadata(node_id, "mimetype", mimetype)?;
             let mut bytes = vec![0u8; 52428800]; // 50MB
 
             loop {

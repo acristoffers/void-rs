@@ -40,7 +40,7 @@ jobs:
           key: ubuntu-${{ matrix.ubuntu }}
 
       - name: Install cargo-deb
-        run: cargo install cargo-deb
+        run: cargo install --locked cargo-deb
 
       - name: Build release
         run: cargo build --release
@@ -90,7 +90,7 @@ jobs:
           key: fedora-${{ matrix.fedora }}
 
       - name: Install cargo-generate-rpm
-        run: cargo install cargo-generate-rpm
+        run: cargo install --locked cargo-generate-rpm
 
       - name: Build release
         run: cargo build --release
