@@ -2369,7 +2369,7 @@ dependencies = [
 
 [[package]]
 name = "tests"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "rand 0.10.3",
  "void",
@@ -2568,21 +2568,16 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "void"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "aes-gcm",
  "argon2",
  "bincode",
  "blake2",
- "bytesize",
- "clap",
- "clap_complete",
- "clap_mangen",
  "hex",
  "itertools",
  "path-absolutize",
  "postcard",
- "rand 0.10.3",
  "regex",
  "serde",
  "serde_derive",
@@ -2593,7 +2588,7 @@ dependencies = [
 
 [[package]]
 name = "void-cli"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "bytesize",
  "clap",
@@ -2608,14 +2603,14 @@ dependencies = [
 
 [[package]]
 name = "void-ffi"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "void",
 ]
 
 [[package]]
 name = "void-gui"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "ffmpeg-next",
  "gettext-rs",
